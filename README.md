@@ -2,6 +2,7 @@
 
 Main changes from the forked version:
 
+- [x] ADDED:  Documentation for the structures and wrapper classes.
 - [x] ADDED:  LLama::predict integration tests.
 - [x] FIXED:  Fixed a memory allocation error in `predict()` for the output buffer causing problems on `free`.
 - [x] FIXED:  LLama::embeddings so that it's functional and correctly obtains the floats for the embeddings.
@@ -9,6 +10,8 @@ Main changes from the forked version:
 - [x] ADDED:  LLama::embeddings integration test with a sample cosine similarity test rig.
 - [-] FIXED?: LLama::token_embeddings was given the same treatment as LLama::embeddings, but is currently
               untested and no unit tests cover it.
+- [x] DEL:    ModelOptions::low_vram was removed since it was unused and not present in llamacpp.
+- [x] ADDED:  ModelOptions::{rope_freq_base, rope_freq_scale, n_draft} added
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'
 once tested well enough.

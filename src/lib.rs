@@ -47,7 +47,6 @@ impl LLama {
                 opts.m_lock,
                 opts.embeddings,
                 opts.m_map,
-                opts.low_vram,
                 opts.vocab_only,
                 opts.n_gpu_layers,
                 opts.n_batch,
@@ -180,6 +179,9 @@ impl LLama {
                 main_gpu,
                 tensor_split,
                 opts.prompt_cache_ro,
+                opts.rope_freq_base,
+                opts.rope_freq_scale,
+                opts.n_draft,
             );
 
             let ret = eval(params, self.state, input2);
@@ -266,6 +268,9 @@ impl LLama {
                 main_gpu,
                 tensor_split,
                 opts.prompt_cache_ro,
+                opts.rope_freq_base,
+                opts.rope_freq_scale,
+                opts.n_draft,
             );
 
             let mut emb_count: i32 = 0;
@@ -373,6 +378,9 @@ impl LLama {
                 main_gpu,
                 tensor_split,
                 opts.prompt_cache_ro,
+                opts.rope_freq_base,
+                opts.rope_freq_scale,
+                opts.n_draft,
             );
 
             let mut emb_count: i32 = 0;
@@ -481,6 +489,9 @@ impl LLama {
                 main_gpu,
                 tensor_split,
                 opts.prompt_cache_ro,
+                opts.rope_freq_base,
+                opts.rope_freq_scale,
+                opts.n_draft,
             );
 
             let ret = llama_predict(params, self.state, out.as_mut_ptr(), opts.debug_mode);
