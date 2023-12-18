@@ -4,10 +4,10 @@ use llama_cpp_rs::{options::{ModelOptions, PredictOptions}, LLama};
 
 mod common;
 
-// This test gives a large token request to generate an answer but should generally finish
-// the response before that is filled.
+// This test is designed to make sure to cut a response shorter than hitting an EOS token. In
+// the past, this has created memory management crashes because the output buffer was allocated incorrectly
 #[test]
-pub fn predict_test() {
+pub fn predict_short_tokens_test() {
     let model_params = ModelOptions {
         n_gpu_layers: common::N_GPU_LAYERS,
         ..Default::default()
@@ -19,7 +19,7 @@ pub fn predict_test() {
     };
 
     let predict_options = PredictOptions {
-        tokens: 4096,
+        tokens: 64,
         token_callback: Some(Box::new(|token| {
             print!("{}", token);
             let _ = io::stdout().flush();

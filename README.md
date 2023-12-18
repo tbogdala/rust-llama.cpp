@@ -87,6 +87,7 @@ cargo test --features cuda --test '*' -- --nocapture --test-threads 1
 
 With `--nocapture`, you'll be able to see the generated output. If it seems like
 nothing is happening, make sure you're using the right feature for your system.
+You also may wish to use the `--release` flag as well to speed up the tests.
 
 
 ## Examples 
