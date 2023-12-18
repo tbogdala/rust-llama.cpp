@@ -1,3 +1,47 @@
+# Forked from mdrokz/rust-llama.cpp
+
+Main changes from the forked version:
+
+- [x] ADDED:  LLama::predict integration tests.
+- [x] FIXED:  Fixed a memory allocation error in `predict()` for the output buffer causing problems on `free`.
+- [x] FIXED:  LLama::embeddings so that it's functional and correctly obtains the floats for the embeddings.
+              This includes a reworking of the C code to match the llamacpp embeddings sample.
+- [x] ADDED:  LLama::embeddings integration test with a sample cosine similarity test rig.
+- [-] FIXED?: LLama::token_embeddings was given the same treatment as LLama::embeddings, but is currently
+              untested and no unit tests cover it.
+
+This fork has the changes in development on the 'dev' branch, which will be merged into 'master'
+once tested well enough.
+
+Behavior of the original repo isn't guaranteed to stay the same! Any deviations should be mentioned
+in the above list. **HOWEVER** ... if there's unit tests for a method, you can be sure some attention
+has been paid to at least try to get it working in a reasonable manner.
+
+## Running tests
+
+To run the tests, the library will need a GGUF model to load and use. The path
+for this model is hardcoded to `models/model.gguf`. On a unix system you should
+be able to create a symbolic link named `model.gguf` in that directory to the
+GGUF model you wish to test with. FWIW, the test prompts use vicuna style prompts.
+
+Any of the 'default' parameters for the integration tests should be modified
+in the `tests/common/mod.rs` file.
+
+The recommended way to run the tests involves using the correct feature for your
+hardware accelleration. The following example is for CUDA device.
+
+```bash
+cargo test --features cuda --test '*' -- --nocapture --test-threads 1
+```
+
+With `--nocapture`, you'll be able to see the generated output. If it seems like
+nothing is happening, make sure you're using the right feature for your system.
+You also may wish to use the `--release` flag as well to speed up the tests.
+
+---
+
+**Original README.md content below:**
+
 # rust_llama.cpp
 [![Docs](https://docs.rs/llama_cpp_rs/badge.svg)](https://docs.rs/llama_cpp_rs)
 [![Crates.io](https://img.shields.io/crates/v/llama_cpp_rs.svg?maxAge=2592000)](https://crates.io/crates/llama_cpp_rs)
@@ -5,16 +49,6 @@
 [LLama.cpp](https://github.com/ggerganov/llama.cpp) rust bindings.
 
 The rust bindings are mostly based on https://github.com/go-skynet/go-llama.cpp/
-
-## Forked from mdrokz/rust-llama.cpp
-
-Main changes from the forked version:
-
-- [x] Integration tests created
-- [x] BUG: Fixed a memory allocation error in `predict()` for the output buffer causing problems on `free`
-
-This fork has the changes in development on the 'dev' branch, which will be merged into 'master'
-once tested well enough.
 
 ## Building Locally
 
@@ -70,25 +104,6 @@ fn main() {
 }
 
 ```
-
-## Running tests
-
-To run the tests, the library will need a GGUF model to load and use. The path
-for this model is hardcoded to `models/model.gguf`. On a unix system you should
-be able to create a symbolic link named `model.gguf` in that directory to the
-GGUF model you wish to test with. FWIW, the test prompts use vicuna style prompts.
-
-The recommended way to run the tests involves using the correct feature for your
-hardware accelleration. The following example is for CUDA device.
-
-```bash
-cargo test --features cuda --test '*' -- --nocapture --test-threads 1
-```
-
-With `--nocapture`, you'll be able to see the generated output. If it seems like
-nothing is happening, make sure you're using the right feature for your system.
-You also may wish to use the `--release` flag as well to speed up the tests.
-
 
 ## Examples 
 

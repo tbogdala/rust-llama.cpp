@@ -50,56 +50,49 @@ static std::string llama_token_to_str(const struct llama_context * ctx, llama_to
 }
 
 
-int get_embeddings(void *params_ptr, void *state_pr, float *res_embeddings)
+int get_embeddings(void *params_ptr, void *state_pr, float *res_embeddings, int *res_n_embeddings)
 {
     gpt_params *params_p = (gpt_params *)params_ptr;
     llama_context *ctx = (llama_context *)state_pr;
     gpt_params params = *params_p;
-
-    if (params_p->seed <= 0)
-    {
-        params_p->seed = time(NULL);
-    }
-
-    std::mt19937 rng(params_p->seed);
-
-    llama_backend_init(params_p->numa);
+    const llama_model *model = llama_get_model(ctx);
 
     int n_past = 0;
 
-    // Add a space in front of the first character to match OG llama tokenizer behavior
-    params_p->prompt.insert(0, 1, ' ');
-
     // tokenize the prompt
-    auto embd_inp = ::llama_tokenize(ctx, params_p->prompt, true);
+    const bool add_bos = llama_vocab_type(model) == LLAMA_VOCAB_TYPE_SPM;
+    auto embd_inp = ::llama_tokenize(ctx, params_p->prompt, add_bos);
 
-    // determine newline token
-    auto llama_token_newline = ::llama_tokenize(ctx, "\n", false);
+    if (embd_inp.size() > (size_t)params.n_ctx) {
+        fprintf(stderr, "%s: get_embeddings error: prompt is longer than the context window (%zu tokens, n_ctx = %d)\n",
+                __func__, embd_inp.size(), params.n_ctx);
+        return 1;
+    }
 
     if (embd_inp.size() > 0)
     {
-        if (llama_eval(ctx, embd_inp.data(), embd_inp.size(), n_past))
-        {
-            fprintf(stderr, "%s : failed to eval\n", __func__);
+        int n_tokens = std::min(params.n_batch, (int) embd_inp.size());
+        if (llama_decode(ctx, llama_batch_get_one(embd_inp.data(), n_tokens, n_past, 0))) {
+            fprintf(stderr, "%s: get_embeddings error: failed to eval\n", __func__);
             return 1;
         }
+        n_past += n_tokens;
+        embd_inp.erase(embd_inp.begin(), embd_inp.begin() + n_tokens);
     }
 
-    const llama_model *model = llama_get_model(ctx);
-
     const int n_embd = llama_n_embd(model);
-
     const auto embeddings = llama_get_embeddings(ctx);
 
     for (int i = 0; i < n_embd; i++)
     {
         res_embeddings[i] = embeddings[i];
     }
+    *res_n_embeddings = n_embd;
 
     return 0;
 }
 
-int get_token_embeddings(void *params_ptr, void *state_pr, int *tokens, int tokenSize, float *res_embeddings)
+int get_token_embeddings(void *params_ptr, void *state_pr, int *tokens, int tokenSize, float *res_embeddings, int *res_n_embeddings)
 {
     gpt_params *params_p = (gpt_params *)params_ptr;
     llama_context *ctx = (llama_context *)state_pr;
@@ -107,15 +100,13 @@ int get_token_embeddings(void *params_ptr, void *state_pr, int *tokens, int toke
 
     for (int i = 0; i < tokenSize; i++)
     {
-        auto token_str = llama_token_to_str(ctx, tokens[i]);
-        if (token_str.empty())
-        {
-            continue;
-        }
-        params_p->prompt += token_str;
+        auto token_str = llama_token_to_piece(ctx, tokens[i]);
+        std::vector<std::string> my_vector;
+        std::string str_token(token_str); // create a new std::string from the char*
+        params_p->prompt += str_token;
     }
 
-    return get_embeddings(params_ptr, state_pr, res_embeddings);
+    return get_embeddings(params_ptr, state_pr, res_embeddings, res_n_embeddings);
 }
 
 int eval(void *params_ptr, void *state_pr, char *text)

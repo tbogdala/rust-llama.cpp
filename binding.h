@@ -17,9 +17,9 @@ extern "C"
 
     void *load_model(const char *fname, int n_ctx, int n_seed, bool memory_f16, bool mlock, bool embeddings, bool mmap, bool low_vram, bool vocab_only, int n_gpu, int n_batch, const char *maingpu, const char *tensorsplit, bool numa);
 
-    int get_embeddings(void *params_ptr, void *state_pr, float *res_embeddings);
+    int get_embeddings(void *params_ptr, void *state_pr, float *res_embeddings, int *res_n_embeddings);
 
-    int get_token_embeddings(void *params_ptr, void *state_pr, int *tokens, int tokenSize, float *res_embeddings);
+    int get_token_embeddings(void *params_ptr, void *state_pr, int *tokens, int tokenSize, float *res_embeddings, int *res_n_embeddings);
 
     void *llama_allocate_params(const char *prompt, int seed, int threads, int tokens,
                                 int top_k, float top_p, float temp, float repeat_penalty,

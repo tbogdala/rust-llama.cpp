@@ -207,7 +207,7 @@ impl LLama {
             opts.tokens = 99999999;
         }
 
-        let mut out = Vec::with_capacity(opts.tokens as usize);
+        let mut out = Vec::with_capacity((self.context_size) as usize);
 
         let mut my_array: Vec<i32> = Vec::with_capacity(opts.tokens as usize * size_of::<i32>());
 
@@ -268,18 +268,21 @@ impl LLama {
                 opts.prompt_cache_ro,
             );
 
+            let mut emb_count: i32 = 0;
             let ret = get_token_embeddings(
                 params,
                 self.state,
                 my_array.as_mut_ptr(),
                 my_array.len() as i32,
                 out.as_mut_ptr(),
+                &mut emb_count
             );
 
             if ret != 0 {
                 return Err("Embedding inference failed".into());
             }
 
+            out.set_len(emb_count as usize);
             Ok(out)
         }
     }
@@ -319,7 +322,7 @@ impl LLama {
             pass = reverse_prompt.as_mut_ptr();
         }
 
-        let mut out = Vec::with_capacity(opts.tokens as usize);
+        let mut out = Vec::with_capacity((self.context_size) as usize);
 
         let logit_bias_cstr = CString::new(opts.logit_bias.clone()).unwrap();
 
@@ -372,12 +375,14 @@ impl LLama {
                 opts.prompt_cache_ro,
             );
 
-            let ret = get_embeddings(params, self.state, out.as_mut_ptr());
+            let mut emb_count: i32 = 0;
+            let ret = get_embeddings(params, self.state, out.as_mut_ptr(), &mut emb_count);
 
             if ret != 0 {
                 return Err("Embedding inference failed".into());
             }
 
+            out.set_len(emb_count as usize);
             Ok(out)
         }
     }
