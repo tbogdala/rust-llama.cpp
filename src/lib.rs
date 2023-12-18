@@ -27,6 +27,7 @@ pub struct LLama {
 }
 
 impl LLama {
+    // Creates a new LLama model context, state hidden internally, using the ModelOptions provided.
     pub fn new(model: String, opts: &ModelOptions) -> Result<Self, Box<dyn Error>> {
         let model_path = CString::new(model).unwrap();
 
@@ -67,6 +68,7 @@ impl LLama {
         }
     }
 
+    // Frees the encapsulated state object being wrapped by this class.
     pub fn free_model(&self) {
         unsafe {
             llama_binding_free_model(self.state);
@@ -292,6 +294,7 @@ impl LLama {
         }
     }
 
+    // Generates a f32 vector for the given `text` using the loaded model to generate embeddings.
     pub fn embeddings(
         &self,
         text: String,
@@ -402,6 +405,9 @@ impl LLama {
         set_callback(self.state, callback);
     }
 
+    // Does text inference with the loaded model given the `text` prompt and controlled by the PredictOptions
+    // passed in. If `token_callback` is set in `opts`, that function will be called each time
+    // a new token is predicted.
     pub fn predict(&self, text: String, opts: PredictOptions) -> Result<String, Box<dyn Error>> {
         let c_str = CString::new(text.clone()).unwrap();
 
