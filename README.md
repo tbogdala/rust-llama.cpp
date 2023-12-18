@@ -6,6 +6,16 @@
 
 The rust bindings are mostly based on https://github.com/go-skynet/go-llama.cpp/
 
+## Forked from mdrokz/rust-llama.cpp
+
+Main changes from the forked version:
+
+- [x] Integration tests created
+- [x] BUG: Fixed a memory allocation error in `predict()` for the output buffer causing problems on `free`
+
+This fork has the changes in development on the 'dev' branch, which will be merged into 'master'
+once tested well enough.
+
 ## Building Locally
 
 Note: This repository uses git submodules to keep track of [LLama.cpp](https://github.com/ggerganov/llama.cpp).
@@ -60,6 +70,24 @@ fn main() {
 }
 
 ```
+
+## Running tests
+
+To run the tests, the library will need a GGUF model to load and use. The path
+for this model is hardcoded to `models/model.gguf`. On a unix system you should
+be able to create a symbolic link named `model.gguf` in that directory to the
+GGUF model you wish to test with. FWIW, the test prompts use vicuna style prompts.
+
+The recommended way to run the tests involves using the correct feature for your
+hardware accelleration. The following example is for CUDA device.
+
+```bash
+cargo test --features cuda --test '*' -- --nocapture --test-threads 1
+```
+
+With `--nocapture`, you'll be able to see the generated output. If it seems like
+nothing is happening, make sure you're using the right feature for your system.
+
 
 ## Examples 
 

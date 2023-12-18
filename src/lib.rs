@@ -421,9 +421,11 @@ impl LLama {
             pass = reverse_prompt.as_mut_ptr();
         }
 
-        println!("count {}", reverse_count);
-
-        let mut out = Vec::with_capacity(opts.tokens as usize);
+        // assume a little on the heavy side at 4 characters per token, then multiply by 4 again for 
+        // a character size of 4 bytes. also, we allocate a buffer to handle the whole context size.
+        // FIXME: a better solution might be passing in a length as well to llama_predict and abort generation
+        // when that limit is hit instead of allowing an overflow.
+        let mut out = Vec::with_capacity((self.context_size * 4 * 4) as usize);
 
         let logit_bias_cstr = CString::new(opts.logit_bias.clone()).unwrap();
 
