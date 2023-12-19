@@ -12,6 +12,9 @@ Main changes from the forked version:
               untested and no unit tests cover it.
 - [x] DEL:    ModelOptions::low_vram was removed since it was unused and not present in llamacpp.
 - [x] ADDED:  ModelOptions::{rope_freq_base, rope_freq_scale, n_draft} added
+- [x] DEL:    Removed all of the needless 'setters' for the options classes.
+- [x] ADDED:  PredictOptions::min_p for min_p sampling.
+
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'
 once tested well enough.
@@ -44,6 +47,8 @@ You also may wish to use the `--release` flag as well to speed up the tests.
 ---
 
 **Original README.md content below:**
+
+---
 
 # rust_llama.cpp
 [![Docs](https://docs.rs/llama_cpp_rs/badge.svg)](https://docs.rs/llama_cpp_rs)

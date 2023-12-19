@@ -8,7 +8,7 @@ pub fn embeddings_test() {
     // because the underlying tokenize function will return that many floats, regardless.
     let model_params = ModelOptions {
         n_gpu_layers: common::N_GPU_LAYERS,
-        context_size: common::NATIVE_CONTEXT_SIZE,
+        context_size: 4096,
         embeddings: true,
         ..Default::default()
     };

@@ -615,9 +615,12 @@ void save_state(void *ctx, char *dst, char *modes)
 }
 
 void *llama_allocate_params(const char *prompt, int seed, int threads, int tokens, int top_k,
-                            float top_p, float temp, float repeat_penalty, int repeat_last_n, bool ignore_eos, bool memory_f16, int n_batch, int n_keep, const char **antiprompt, int antiprompt_count,
-                            float tfs_z, float typical_p, float frequency_penalty, float presence_penalty, int mirostat, float mirostat_eta, float mirostat_tau, bool penalize_nl, const char *logit_bias, const char *session_file, bool prompt_cache_all, bool mlock, bool mmap,
-                            const char *maingpu, const char *tensorsplit, bool prompt_cache_ro, float rope_freq_base, float rope_freq_scale, int n_draft)
+                            float top_p, float min_p, float temp, float repeat_penalty, int repeat_last_n, bool ignore_eos, bool memory_f16, 
+                            int n_batch, int n_keep, const char **antiprompt, int antiprompt_count, float tfs_z, float typical_p, 
+                            float frequency_penalty, float presence_penalty, int mirostat, float mirostat_eta, float mirostat_tau, 
+                            bool penalize_nl, const char *logit_bias, const char *session_file, bool prompt_cache_all, bool mlock, 
+                            bool mmap, const char *maingpu, const char *tensorsplit, bool prompt_cache_ro, float rope_freq_base, 
+                            float rope_freq_scale, int n_draft)
 {
     gpt_params *params = new gpt_params;
     params->seed = seed;
@@ -628,6 +631,7 @@ void *llama_allocate_params(const char *prompt, int seed, int threads, int token
     params->prompt_cache_ro = prompt_cache_ro;
     params->sparams.top_k = top_k;
     params->sparams.top_p = top_p;
+    params->sparams.min_p = min_p;
     params->memory_f16 = memory_f16;
     params->sparams.temp = temp;
     params->use_mmap = mmap;
