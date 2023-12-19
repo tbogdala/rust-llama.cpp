@@ -130,10 +130,11 @@ int eval(void *params_ptr, void *state_pr, char *text)
     return llama_eval(ctx, tokens.data(), n_prompt_tokens, n_past);
 }
 
-int llama_predict(void *params_ptr, void *state_pr, char *result, bool debug)
+llama_predict_result llama_predict(void *params_ptr, void *state_pr, char *result, bool debug)
 {
     gpt_params *params_p = (gpt_params *)params_ptr;
     llama_context *ctx = (llama_context *)state_pr;
+    llama_predict_result return_value;
     
     llama_set_n_threads(ctx, params_p->n_threads, params_p->n_threads_batch);
 
@@ -172,7 +173,8 @@ int llama_predict(void *params_ptr, void *state_pr, char *result, bool debug)
             if (!llama_load_session_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.capacity(), &n_token_count_out))
             {
                 fprintf(stderr, "%s: error: failed to load session file '%s'\n", __func__, path_session.c_str());
-                return 1;
+                return_value.result = 1;
+                return return_value;
             }
             session_tokens.resize(n_token_count_out);
             llama_set_rng_seed(ctx, params_p->seed);
@@ -345,7 +347,8 @@ int llama_predict(void *params_ptr, void *state_pr, char *result, bool debug)
                 if (llama_eval(ctx, &embd[i], n_eval, n_past))
                 {
                     fprintf(stderr, "%s : failed to eval\n", __func__);
-                    return 1;
+                    return_value.result = 1;
+                    return return_value;
                 }
                 n_past += n_eval;
             }
@@ -532,6 +535,19 @@ end:
     signal(SIGINT, SIG_DFL);
 #endif
 
+    // build up the result structure with the success code and all the timing data
+    const llama_timings timings = llama_get_timings(ctx);
+    return_value.result = 0;
+    return_value.t_start_ms = timings.t_start_ms;
+    return_value.t_end_ms = timings.t_end_ms;
+    return_value.t_load_ms = timings.t_load_ms;
+    return_value.t_sample_ms = timings.t_sample_ms;
+    return_value.t_p_eval_ms = timings.t_p_eval_ms;
+    return_value.t_eval_ms = timings.t_eval_ms;
+    return_value.n_sample = timings.n_sample;
+    return_value.n_p_eval = timings.n_p_eval;
+    return_value.n_eval = timings.n_eval;
+
     if (debug)
     {
         llama_print_timings(ctx);
@@ -539,7 +555,8 @@ end:
     }
 
     strcpy(result, res.c_str());
-    return 0;
+
+    return return_value;
 }
 
 void llama_binding_free_model(void *state_ptr)

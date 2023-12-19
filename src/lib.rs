@@ -188,12 +188,11 @@ impl LLama {
             );
 
             let ret = eval(params, self.state, input2);
+            llama_free_params(params);
 
             if ret != 0 {
                 return Err("Failed to predict".into());
             }
-
-            llama_free_params(params);
         }
 
         Ok(())
@@ -286,10 +285,12 @@ impl LLama {
                 out.as_mut_ptr(),
                 &mut emb_count
             );
+            llama_free_params(params);
 
             if ret != 0 {
                 return Err("Embedding inference failed".into());
             }
+            
 
             out.set_len(emb_count as usize);
             Ok(out)
@@ -391,6 +392,7 @@ impl LLama {
 
             let mut emb_count: i32 = 0;
             let ret = get_embeddings(params, self.state, out.as_mut_ptr(), &mut emb_count);
+            llama_free_params(params);
 
             if ret != 0 {
                 return Err("Embedding inference failed".into());
@@ -411,7 +413,8 @@ impl LLama {
     // Does text inference with the loaded model given the `text` prompt and controlled by the PredictOptions
     // passed in. If `token_callback` is set in `opts`, that function will be called each time
     // a new token is predicted.
-    pub fn predict(&self, text: String, opts: PredictOptions) -> Result<String, Box<dyn Error>> {
+    // The function returns a tuple of the predicted string and the timing data for the prediction.
+    pub fn predict(&self, text: String, opts: PredictOptions) -> Result<(String, LLamaPredictTimings), Box<dyn Error>> {
         let c_str = CString::new(text.clone()).unwrap();
 
         let input = c_str.as_ptr();
@@ -505,12 +508,10 @@ impl LLama {
             );
 
             let ret = llama_predict(params, self.state, out.as_mut_ptr(), opts.debug_mode);
-
-            if ret != 0 {
+            llama_free_params(params);
+            if ret.result != 0 {
                 return Err("Failed to predict".into());
             }
-
-            llama_free_params(params);
 
             let c_str: &CStr = CStr::from_ptr(out.as_mut_ptr());
             let mut res: String = c_str.to_str().unwrap().to_owned();
@@ -523,9 +524,33 @@ impl LLama {
                 res = res.trim_end_matches(s).to_string();
             }
 
-            Ok(res)
+            let timings = LLamaPredictTimings {
+                t_start_ms: ret.t_start_ms,
+                t_end_ms: ret.t_end_ms,
+                t_load_ms: ret.t_load_ms,
+                t_sample_ms: ret.t_sample_ms,
+                t_p_eval_ms: ret.t_p_eval_ms,
+                t_eval_ms: ret.t_eval_ms,
+                n_sample: ret.n_sample,
+                n_p_eval: ret.n_p_eval,
+                n_eval: ret.n_eval,
+            };
+
+            Ok((res, timings))
         }
     }
+}
+
+pub struct LLamaPredictTimings {
+    pub t_start_ms: f64,
+    pub t_end_ms: f64,
+    pub t_load_ms: f64,
+    pub t_sample_ms: f64,
+    pub t_p_eval_ms: f64,
+    pub t_eval_ms: f64,
+    pub n_sample: i32,
+    pub n_p_eval: i32,
+    pub n_eval: i32,
 }
 
 impl Drop for LLama {

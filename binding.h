@@ -32,7 +32,25 @@ extern "C"
 
     void llama_binding_free_model(void *state);
 
-    int llama_predict(void *params_ptr, void *state_pr, char *result, bool debug);
+    // performance timing information
+    typedef struct llama_predict_result {
+        // 0 == success; 1 == failure
+        int result;
+        
+        // timing data
+        double t_start_ms;
+        double t_end_ms;
+        double t_load_ms;
+        double t_sample_ms;
+        double t_p_eval_ms;
+        double t_eval_ms;
+
+        int n_sample;
+        int n_p_eval;
+        int n_eval;
+    } llama_predict_result;
+
+    llama_predict_result llama_predict(void *params_ptr, void *state_pr, char *result, bool debug);    
 
 #ifdef __cplusplus
 }
