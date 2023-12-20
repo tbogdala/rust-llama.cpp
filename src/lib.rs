@@ -217,33 +217,34 @@ impl LLama {
             opts.tokens = 99999999;
         }
 
-        let mut out = Vec::with_capacity((self.context_size) as usize);
-
-        let mut my_array: Vec<i32> = Vec::with_capacity(opts.tokens as usize * size_of::<i32>());
-
-        for (i, &v) in tokens.iter().enumerate() {
-            my_array[i] = v;
-        }
-
-        let logit_bias_cstr = CString::new(opts.logit_bias.clone()).unwrap();
-
-        let logit_bias = logit_bias_cstr.as_ptr();
-
-        let path_prompt_cache_cstr = CString::new(opts.path_prompt_cache.clone()).unwrap();
-
-        let path_prompt_cache = path_prompt_cache_cstr.as_ptr();
-
-        let main_gpu_cstr = CString::new(opts.main_gpu.clone()).unwrap();
-
-        let main_gpu = main_gpu_cstr.as_ptr();
-
-        let tensor_split_cstr = CString::new(opts.tensor_split.clone()).unwrap();
-
-        let tensor_split = tensor_split_cstr.as_ptr();
-
-        let input = CString::new("").unwrap();
-
         unsafe {
+            let embedding_size: i32 = get_llama_n_embd(self.model);
+
+            let mut out = Vec::with_capacity((embedding_size) as usize);
+            let mut my_array: Vec<i32> = Vec::with_capacity(opts.tokens as usize * size_of::<i32>());
+
+            for (i, &v) in tokens.iter().enumerate() {
+                my_array[i] = v;
+            }
+
+            let logit_bias_cstr = CString::new(opts.logit_bias.clone()).unwrap();
+
+            let logit_bias = logit_bias_cstr.as_ptr();
+
+            let path_prompt_cache_cstr = CString::new(opts.path_prompt_cache.clone()).unwrap();
+
+            let path_prompt_cache = path_prompt_cache_cstr.as_ptr();
+
+            let main_gpu_cstr = CString::new(opts.main_gpu.clone()).unwrap();
+
+            let main_gpu = main_gpu_cstr.as_ptr();
+
+            let tensor_split_cstr = CString::new(opts.tensor_split.clone()).unwrap();
+
+            let tensor_split = tensor_split_cstr.as_ptr();
+
+            let input = CString::new("").unwrap();
+
             let params = llama_allocate_params(
                 input.as_ptr(),
                 opts.seed,
@@ -338,26 +339,28 @@ impl LLama {
         if !reverse_prompt.is_empty() {
             pass = reverse_prompt.as_mut_ptr();
         }
-
-        let mut out = Vec::with_capacity((self.context_size) as usize);
-
-        let logit_bias_cstr = CString::new(opts.logit_bias.clone()).unwrap();
-
-        let logit_bias = logit_bias_cstr.as_ptr();
-
-        let path_prompt_cache_cstr = CString::new(opts.path_prompt_cache.clone()).unwrap();
-
-        let path_prompt_cache = path_prompt_cache_cstr.as_ptr();
-
-        let main_gpu_cstr = CString::new(opts.main_gpu.clone()).unwrap();
-
-        let main_gpu = main_gpu_cstr.as_ptr();
-
-        let tensor_split_cstr = CString::new(opts.tensor_split.clone()).unwrap();
-
-        let tensor_split = tensor_split_cstr.as_ptr();
-
+ 
         unsafe {
+            let embedding_size: i32 = get_llama_n_embd(self.model);
+
+            let mut out = Vec::with_capacity((embedding_size) as usize);
+
+            let logit_bias_cstr = CString::new(opts.logit_bias.clone()).unwrap();
+
+            let logit_bias = logit_bias_cstr.as_ptr();
+
+            let path_prompt_cache_cstr = CString::new(opts.path_prompt_cache.clone()).unwrap();
+
+            let path_prompt_cache = path_prompt_cache_cstr.as_ptr();
+
+            let main_gpu_cstr = CString::new(opts.main_gpu.clone()).unwrap();
+
+            let main_gpu = main_gpu_cstr.as_ptr();
+
+            let tensor_split_cstr = CString::new(opts.tensor_split.clone()).unwrap();
+
+            let tensor_split = tensor_split_cstr.as_ptr();
+
             let params = llama_allocate_params(
                 input,
                 opts.seed,
@@ -456,6 +459,7 @@ impl LLama {
         // a character size of 4 bytes. also, we allocate a buffer to handle the whole context size.
         // FIXME: a better solution might be passing in a length as well to llama_predict and abort generation
         // when that limit is hit instead of allowing an overflow.
+        assert!(self.context_size > 0);
         let mut out = Vec::with_capacity((self.context_size * 4 * 4) as usize);
 
         let logit_bias_cstr = CString::new(opts.logit_bias.clone()).unwrap();

@@ -28,7 +28,7 @@ pub fn predict_test() {
         ..Default::default()
     };
 
-    let prompt = "USER: What are the high level steps are required to implement a raytracing engine?\nASSISTANT: ";
+    let prompt = "USER: What are the high level steps are required to implement a raytracing engine?\nASSISTANT:";
 
     let result = llm_model.predict(prompt.to_string(), predict_options);
     if let Ok((_, timings)) = result {

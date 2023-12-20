@@ -109,6 +109,12 @@ int get_token_embeddings(void *params_ptr, void *state_pr, int *tokens, int toke
     return get_embeddings(params_ptr, state_pr, res_embeddings, res_n_embeddings);
 }
 
+int get_llama_n_embd(void*model)
+{
+    const llama_model *m = (const llama_model *)model;
+    return llama_n_embd(m);
+}
+
 int eval(void *params_ptr, void *state_pr, char *text)
 {
     gpt_params *params_p = (gpt_params *)params_ptr;

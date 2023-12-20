@@ -27,6 +27,9 @@ extern "C"
 
     int get_token_embeddings(void *params_ptr, void *state_pr, int *tokens, int tokenSize, float *res_embeddings, int *res_n_embeddings);
 
+    // returns the size of the embeddings this model makes
+    int get_llama_n_embd(void *model);
+
     void *llama_allocate_params(const char *prompt, int seed, int threads, int tokens, int top_k, float top_p, float min_p, float temp, float repeat_penalty,
                                 int repeat_last_n, bool ignore_eos, bool memory_f16, int n_batch, int n_keep, const char **antiprompt, int antiprompt_count,
                                 float tfs_z, float typical_p, float frequency_penalty, float presence_penalty, int mirostat, float mirostat_eta, 

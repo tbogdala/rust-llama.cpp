@@ -200,7 +200,7 @@ impl Default for PredictOptions {
             top_p: 0.95,
             temperature: 0.8,
             penalty: 1.1,
-            f16_kv: false,
+            f16_kv: true,
             debug_mode: false,
             stop_prompts: vec![],
             ignore_eos: false,

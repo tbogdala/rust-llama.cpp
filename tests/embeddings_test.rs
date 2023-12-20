@@ -4,8 +4,8 @@ mod common;
 
 #[test]
 pub fn embeddings_test() {
-    // for this to not crash, the `context_size` needs to be set to the context size of the model,
-    // because the underlying tokenize function will return that many floats, regardless.
+    // when generating embeddings, the size of the embeddings is pulled from the model from
+    // within the LLama wrapper.
     let model_params = ModelOptions {
         n_gpu_layers: common::N_GPU_LAYERS,
         context_size: 4096,
@@ -19,7 +19,6 @@ pub fn embeddings_test() {
     };
 
     let mut predict_options = PredictOptions {
-        batch: 512,
         ..Default::default()
     };
 

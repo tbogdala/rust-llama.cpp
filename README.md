@@ -3,21 +3,24 @@
 Main changes from the forked version:
 
 - [x] ADDED:  Documentation for the structures and wrapper classes.
-- [x] ADDED:  LLama::predict() integration tests.
-- [x] FIXED:  Fixed a memory allocation error in `predict()` for the output buffer causing problems on `free`.
-- [x] FIXED:  LLama::embeddings() so that it's functional and correctly obtains the floats for the embeddings.
+- [x] ADDED:  `LLama::predict()` integration tests.
+- [x] FIXED:  Fixed a memory allocation error in `predict()` for the output buffer causing problems on free.
+- [x] ADDED:  `get_llama_n_embd()` in the bindings to pull the embedding size generated directly from the model.
+- [x] FIXED:  `LLama::embeddings()` so that it's functional and correctly obtains the floats for the embeddings.
               This includes a reworking of the C code to match the llamacpp embeddings sample.
-- [x] ADDED:  LLama::embeddings() integration test with a sample cosine similarity test rig.
-- [ ] FIXED?: LLama::token_embeddings() was given the same treatment as LLama::embeddings, but is currently
+- [x] ADDED:  `LLama::embeddings()` integration test with a sample cosine similarity test rig.
+- [ ] FIXED?: `LLama::token_embeddings()` was given the same treatment as `LLama::embeddings()`, but is currently
               untested and no unit tests cover it.
-- [x] DEL:    ModelOptions::low_vram was removed since it was unused and not present in llamacpp.
-- [x] ADDED:  ModelOptions::{rope_freq_base, rope_freq_scale, n_draft} added
+- [x] DEL:    `ModelOptions::low_vram` was removed since it was unused and not present in llamacpp.
+- [x] ADDED:  `ModelOptions::{rope_freq_base, rope_freq_scale, n_draft}` added
 - [x] DEL:    Removed all of the needless 'setters' for the options classes.
-- [x] ADDED:  PredictOptions::min_p for min_p sampling.
-- [x] CHANGE: LLama::predict() now returns a tuple in the Result: the inferred text and a struct containing timing data
-- [x] CHANGE: load_model() now returns a struct with both the loaded ctx and model. LLama now stores both pointers.
-- [x] FIXED:  Fixed crashing from multiple free_model() invocations; updated basic_test integration test for verification.
+- [x] ADDED:  `PredictOptions::min_p` for min_p sampling.
+- [x] CHANGE: `LLama::predict()` now returns a tuple in the result: the inferred text and a struct containing timing data
+- [x] CHANGE: `load_model()` now returns a struct with both the loaded ctx and model. LLama now stores both pointers.
+- [x] FIXED:  Fixed crashing from multiple `free_model()` invocations; updated basic_test integration test for verification.
 - [x] FIXED:  Models now get their memory free'd now too instead of just the context.
+- [x] FIXED:  Metal support on macos should work with the `metal` feature. Also added Accelerate support for macos
+              if the `metal` feature is not enabled resulting in minor performance boosts.
 
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'
@@ -26,6 +29,13 @@ once tested well enough.
 Behavior of the original repo isn't guaranteed to stay the same! Any deviations should be mentioned
 in the above list. **HOWEVER** ... if there's unit tests for a method, you can be sure some attention
 has been paid to at least try to get it working in a reasonable manner.
+
+
+### Notes:
+
+* Setting `ModelOptions::context_size` to zero will cause memory errors currently as that is what is used
+  to create the buffers to send through the FFI.
+  
 
 ## Running tests
 
@@ -41,7 +51,7 @@ The recommended way to run the tests involves using the correct feature for your
 hardware accelleration. The following example is for CUDA device.
 
 ```bash
-cargo test --features cuda --test '*' -- --nocapture --test-threads 1
+cargo test --release --features cuda --test '*' -- --nocapture --test-threads 1
 ```
 
 With `--nocapture`, you'll be able to see the generated output. If it seems like
