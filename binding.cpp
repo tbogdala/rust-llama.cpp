@@ -559,9 +559,11 @@ end:
     return return_value;
 }
 
-void llama_binding_free_model(void *state_ptr)
+void llama_binding_free_model(void *state_ptr, void *model_ptr)
 {
     llama_context *ctx = (llama_context *)state_ptr;
+    llama_model *model = (llama_model *)model_ptr;
+    llama_free_model(model);
     llama_free(ctx);
 }
 
@@ -720,7 +722,7 @@ void *llama_allocate_params(const char *prompt, int seed, int threads, int token
     return params;
 }
 
-void *load_model(const char *fname, int n_ctx, int n_seed, bool memory_f16, bool mlock, bool embeddings, bool mmap, bool vocab_only, int n_gpu_layers, int n_batch, const char *maingpu, const char *tensorsplit, bool numa)
+load_model_result load_model(const char *fname, int n_ctx, int n_seed, bool memory_f16, bool mlock, bool embeddings, bool mmap, bool vocab_only, int n_gpu_layers, int n_batch, const char *maingpu, const char *tensorsplit, bool numa)
 {
     // load the model
     auto lparams = llama_context_default_params();
@@ -769,11 +771,16 @@ void *load_model(const char *fname, int n_ctx, int n_seed, bool memory_f16, bool
         lparams.n_batch = n_batch;
 
     llama_backend_init(numa);
-    void *res = nullptr;
+    load_model_result res;
+    res.ctx = nullptr;
+    res.model = nullptr;
     try
     {
         auto model = llama_load_model_from_file(fname, mparams);
-	res = llama_new_context_with_model(model, lparams);
+	    auto ctx = llama_new_context_with_model(model, lparams);
+        res.ctx = ctx;
+        res.model = model;
+        
     }
     catch (std::runtime_error &e)
     {

@@ -22,6 +22,7 @@ lazy_static! {
 #[derive(Debug, Clone)]
 pub struct LLama {
     state: *mut c_void,
+    model: *mut c_void,
     embeddings: bool,
     context_size: i32,
 }
@@ -56,11 +57,12 @@ impl LLama {
                 opts.numa,
             );
 
-            if result == std::ptr::null_mut() {
+            if result.ctx == std::ptr::null_mut() || result.model == std::ptr::null_mut() {
                 return Err("Failed to load model".into());
             } else {
                 Ok(Self {
-                    state: result,
+                    state: result.ctx,
+                    model: result.model,
                     embeddings: opts.embeddings,
                     context_size: opts.context_size,
                 })
@@ -69,9 +71,13 @@ impl LLama {
     }
 
     // Frees the encapsulated state object being wrapped by this class.
-    pub fn free_model(&self) {
-        unsafe {
-            llama_binding_free_model(self.state);
+    pub fn free_model(&mut self) {
+        if !self.state.is_null() {
+            unsafe {
+                llama_binding_free_model(self.state, self.model);
+            }
+            self.state = std::ptr::null_mut();
+            self.model = std::ptr::null_mut();
         }
     }
 
