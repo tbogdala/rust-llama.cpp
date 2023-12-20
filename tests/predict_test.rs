@@ -30,5 +30,11 @@ pub fn predict_test() {
 
     let prompt = "USER: What are the high level steps are required to implement a raytracing engine?\nASSISTANT: ";
 
-    let _result = llm_model.predict(prompt.to_string(), predict_options);
+    let result = llm_model.predict(prompt.to_string(), predict_options);
+    if let Ok((_, timings)) = result {
+        println!("\n\nTiming Data: {} tokens total in {:.2} ms ; {:.2} T/s\n",
+            timings.n_eval, 
+            (timings.t_end_ms - timings.t_start_ms),
+            1e3 / (timings.t_end_ms - timings.t_start_ms) * timings.n_eval as f64);
+    }
 }

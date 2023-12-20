@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, fs};
 use std::path::PathBuf;
 
 use cc::Build;
@@ -113,7 +113,7 @@ fn compile_ggml(cx: &mut Build, cx_flags: &str) {
         .compile("ggml");
 }
 
-fn compile_metal(cx: &mut Build, cxx: &mut Build) {
+fn compile_metal(cx: &mut Build, cxx: &mut Build, out: &PathBuf) {
     cx.flag("-DGGML_USE_METAL").flag("-DGGML_METAL_NDEBUG");
     cxx.flag("-DGGML_USE_METAL");
 
@@ -122,8 +122,54 @@ fn compile_metal(cx: &mut Build, cxx: &mut Build) {
     println!("cargo:rustc-link-lib=framework=MetalPerformanceShaders");
     println!("cargo:rustc-link-lib=framework=MetalKit");
 
-    cx.include("./llama.cpp/ggml-metal.h")
-        .file("./llama.cpp/ggml-metal.m");
+    // solution yoinked from rustformers/llm -- thanks @philpax
+    // ref: https://github.com/rustformers/llm/commit/9d39ff8cc0a89bb22cc17bdc1dd2470f3421d788
+    const GGML_METAL_METAL_PATH: &str = "llama.cpp/ggml-metal.metal";
+    const GGML_METAL_PATH: &str = "llama.cpp/ggml-metal.m";
+    println!("cargo:rerun-if-changed={GGML_METAL_METAL_PATH}");
+    println!("cargo:rerun-if-changed={GGML_METAL_PATH}");
+
+    // HACK: patch ggml-metal.m so that it includes ggml-metal.metal, so that
+    // a runtime dependency is not necessary
+    let ggml_metal_metal = std::fs::read_to_string(GGML_METAL_METAL_PATH)
+        .expect("Could not read ggml-metal.metal")
+        .replace('\\', "\\\\")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\"', "\\\"");
+
+    let ggml_metal =
+        std::fs::read_to_string(GGML_METAL_PATH).expect("Could not read ggml-metal.m");
+
+    let needle = r#"NSString * src = [NSString stringWithContentsOfFile:sourcePath encoding:NSUTF8StringEncoding error:&error];"#;
+    if !ggml_metal.contains(needle) {
+        panic!("ggml-metal.m does not contain the needle to be replaced; the patching logic needs to be reinvestigated. Contact a `llm` developer!");
+    }
+
+    // Replace the runtime read of the file with a compile-time string
+    let ggml_metal = ggml_metal.replace(
+        needle,
+        &format!(r#"NSString * src  = @"{ggml_metal_metal}";"#),
+    );
+
+    // Replace the judicious use of `fprintf` with the already-existing `metal_printf`,
+    // backing up the definition of `metal_printf` first
+    let ggml_metal = ggml_metal
+        .replace(
+            r#"#define metal_printf(...) fprintf(stderr, __VA_ARGS__)"#,
+            "METAL_PRINTF_DEFINITION",
+        )
+        .replace("fprintf(stderr,", "metal_printf(")
+        .replace(
+            "METAL_PRINTF_DEFINITION",
+            r#"#define metal_printf(...) fprintf(stderr, __VA_ARGS__)"#,
+        );
+
+    let patched_ggml_metal_path = out.join("ggml-metal.m");
+    std::fs::write(&patched_ggml_metal_path, ggml_metal)
+        .expect("Could not write temporary patched ggml-metal.m");
+
+    cx.file(patched_ggml_metal_path);
 }
 
 fn compile_llama(cxx: &mut Build, cxx_flags: &str, out_path: &PathBuf, ggml_type: &str) {
@@ -136,9 +182,21 @@ fn compile_llama(cxx: &mut Build, cxx_flags: &str, out_path: &PathBuf, ggml_type
     cxx.object(ggml_obj);
 
     if !ggml_type.is_empty() {
-        let ggml_feature_obj =
-            PathBuf::from(&out_path).join(format!("llama.cpp/ggml-{}.o", ggml_type));
-        cxx.object(ggml_feature_obj);
+        // the patched ggml-metal.o file has a prefix in the output directory so search it out
+        if ggml_type.eq("metal") {
+            for fs_entry in fs::read_dir(out_path).unwrap() {
+                let fs_entry = fs_entry.unwrap();
+                let path = fs_entry.path();
+                if path.ends_with("-ggml-metal.o") {
+                    cxx.object(path);
+                    break;
+                }
+            }
+        } else {
+            let ggml_feature_obj =
+                PathBuf::from(&out_path).join(format!("llama.cpp/ggml-{}.o", ggml_type));
+            cxx.object(ggml_feature_obj);
+        }
     }
 
     cxx.shared_flag(true)
@@ -183,8 +241,13 @@ fn main() {
     } else if cfg!(feature = "blis") {
         compile_blis(&mut cx);
     } else if cfg!(feature = "metal") && cfg!(target_os = "macos") {
-        compile_metal(&mut cx, &mut cxx);
+        compile_metal(&mut cx, &mut cxx, &out_path);
         ggml_type = "metal".to_string();
+    }
+
+    if !cfg!(feature = "metal") && cfg!(target_os = "macos") {
+        println!("cargo:rustc-link-lib=framework=Accelerate");
+        cx.define("GGML_USE_ACCELERATE", None);
     }
 
     if cfg!(feature = "cuda") {
