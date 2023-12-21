@@ -46,18 +46,30 @@ fn compile_blis(cx: &mut Build) {
     println!("cargo:rustc-link-lib=blis");
 }
 
-fn compile_cuda(cxx_flags: &str) {
+fn compile_cuda(cxx_flags: &str, outdir: &PathBuf) {
     println!("cargo:rustc-link-search=native=/usr/local/cuda/lib64");
     println!("cargo:rustc-link-search=native=/opt/cuda/lib64");
 
-    if let Ok(cuda_path) = std::env::var("CUDA_PATH") {
+    // if the environment variable isn't set, this will probably
+    // impact the success chances of this build script.
+    let cuda_path = std::env::var("CUDA_PATH").unwrap_or_default();
+    if cfg!(target_os = "windows") {
+        println!(
+            "cargo:rustc-link-search=native={}/lib/x64",
+            cuda_path
+        );
+    } else {
         println!(
             "cargo:rustc-link-search=native={}/targets/x86_64-linux/lib",
             cuda_path
         );
     }
 
-    let libs = "cublas culibos cudart cublasLt pthread dl rt";
+    let libs = if cfg!(target_os = "linux") {
+        "cublas cudart cublasLt pthread dl rt"
+    } else {
+        "cublas cudart cublasLt"
+    };
 
     for lib in libs.split_whitespace() {
         println!("cargo:rustc-link-lib={}", lib);
@@ -90,11 +102,62 @@ fn compile_cuda(cxx_flags: &str) {
         }
     }
 
-    nvcc.compiler("nvcc")
+    // this next block is a hackjob but seems to work. any further cleanup
+    // by people more specialized in windows development would be appreciated.
+
+    if cfg!(target_os = "linux") {
+        nvcc.compiler("nvcc")
         .file("./llama.cpp/ggml-cuda.cu")
         .flag("-Wno-pedantic")
         .include("./llama.cpp/ggml-cuda.h")
         .compile("ggml-cuda");
+    } else {
+        let include_path = format!("{}\\include", cuda_path);
+
+        let object_file = outdir
+            .join("llama.cpp")
+            .join("ggml-cuda.o")
+            .to_str()
+            .expect("Could not build ggml-cuda.o filename")
+            .to_string();
+
+        std::process::Command::new("nvcc")
+            .arg("-ccbin")
+            .arg(
+                cc::Build::new()
+                    .get_compiler()
+                    .path()
+                    .parent()
+                    .unwrap()
+                    .join("cl.exe"),
+            )
+            .arg("-I")
+            .arg(&include_path)
+            .arg("-o")
+            .arg(&object_file)
+            .arg("-x")
+            .arg("cu")
+            .arg("-maxrregcount=0")
+            .arg("--machine")
+            .arg("64")
+            .arg("--compile")
+            .arg("--generate-code=arch=compute_52,code=[compute_52,sm_52]")
+            .arg("--generate-code=arch=compute_61,code=[compute_61,sm_61]")
+            .arg("--generate-code=arch=compute_75,code=[compute_75,sm_75]")
+            .arg("-D_WINDOWS")
+            .arg("-DNDEBUG")
+            .arg("-DGGML_USE_CUBLAS")
+            .arg("-D_CRT_SECURE_NO_WARNINGS")
+            .arg("-D_MBCS")
+            .arg("-DWIN32")
+            .arg(r"-Illama.cpp\include\ggml")
+            .arg(r"llama.cpp\ggml-cuda.cu")
+            .status().unwrap();
+
+        nvcc.object(&object_file);
+        nvcc.flag("-DGGML_USE_CUBLAS");
+        nvcc.include(&include_path);
+    }
 }
 
 fn compile_ggml(cx: &mut Build, cx_flags: &str) {
@@ -199,6 +262,18 @@ fn compile_llama(cxx: &mut Build, cxx_flags: &str, out_path: &PathBuf, ggml_type
         }
     }
 
+    if cfg!(target_os = "windows") {
+        // for some reason, this only appears to be needed under windows?
+        let build_info_str = std::process::Command::new("sh")
+            .arg("llama.cpp/scripts/build-info.sh")
+            .output().expect("Failed to generate llama.cpp/common/build-info.cpp from the shell script.");
+        
+        let mut build_info_file = fs::File::create("llama.cpp/common/build-info.cpp").expect("Could not create llama.cpp/common/build-info.cpp file");
+        std::io::Write::write_all(&mut build_info_file, &build_info_str.stdout).expect("Could not write to llama.cpp/common/build-info.cpp file");
+
+        cxx.shared_flag(true).file("./llama.cpp/common/build-info.cpp");
+    }
+
     cxx.shared_flag(true)
         .file("./llama.cpp/common/common.cpp")
         .file("./llama.cpp/llama.cpp")
@@ -226,9 +301,7 @@ fn main() {
     }
 
     let mut cx = cc::Build::new();
-
     let mut cxx = cc::Build::new();
-
     let mut ggml_type = String::new();
 
     cxx.include("./llama.cpp/common").include("./llama.cpp").include("./include_shims");
@@ -254,19 +327,24 @@ fn main() {
         cx_flags.push_str(" -DGGML_USE_CUBLAS");
         cxx_flags.push_str(" -DGGML_USE_CUBLAS");
 
-        cx.include("/usr/local/cuda/include")
-            .include("/opt/cuda/include");
-        cxx.include("/usr/local/cuda/include")
-            .include("/opt/cuda/include");
+        if cfg!(target_os = "linux") {
+            cx.include("/usr/local/cuda/include")
+                .include("/opt/cuda/include");
+            cxx.include("/usr/local/cuda/include")
+                .include("/opt/cuda/include");
 
-        if let Ok(cuda_path) = std::env::var("CUDA_PATH") {
-            cx.include(format!("{}/targets/x86_64-linux/include", cuda_path));
-            cxx.include(format!("{}/targets/x86_64-linux/include", cuda_path));
+            if let Ok(cuda_path) = std::env::var("CUDA_PATH") {
+                cx.include(format!("{}/targets/x86_64-linux/include", cuda_path));
+                cxx.include(format!("{}/targets/x86_64-linux/include", cuda_path));
+            }
+        } else {
+            cx.flag("/MT");
+            cxx.flag("/MT");
         }
 
         compile_ggml(&mut cx, &cx_flags);
 
-        compile_cuda(&cxx_flags);
+        compile_cuda(&cxx_flags, &out_path);
 
         compile_llama(&mut cxx, &cxx_flags, &out_path, "cuda");
     } else {

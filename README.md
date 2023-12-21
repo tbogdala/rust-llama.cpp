@@ -20,7 +20,8 @@ Main changes from the forked version:
 - [x] FIXED:  Fixed crashing from multiple `free_model()` invocations; updated basic_test integration test for verification.
 - [x] FIXED:  Models now get their memory free'd now too instead of just the context.
 - [x] FIXED:  Metal support on macos should work with the `metal` feature. Also added Accelerate support for macos
-              if the `metal` feature is not enabled resulting in minor performance boosts.
+              if the `metal` feature is not enabled resulting in minor performance boosts. 
+- [x] FIXED:  Cuda support on Win11 x64 should work with the `cuda` feature.
 
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'
@@ -35,7 +36,16 @@ has been paid to at least try to get it working in a reasonable manner.
 
 * Setting `ModelOptions::context_size` to zero will cause memory errors currently as that is what is used
   to create the buffers to send through the FFI.
-  
+* PLATFORMS: Windows 11, MacOS and Linux are tested without any features enabled. MacOS with the `metal`
+  feature has been tested and should be functional. Windows 11 and Linux have been tested with `cuda` and
+  should work.
+* MAC: If some of the integration tests crash, consider the possibility that the `context_size` used in the test sends 
+  your mac out of memory. For example, my MBA M1 with 8gb of memory cannot handle a `context_size` of 4096 with 
+  7B_Q4_K_S models and I have to drop the context down to 2048.  
+* WINDOWS: Make sure to install an llvm package to compile the bindings. I use scoop, so it's as 
+  easy as running `scoop install llvm`. VS 2022 and Cuda 11.8 were also installed in addition to the rust
+  toolchain (msvc version, the default) and the cargo commands were issued from the VS Developer Command Prompt.
+
 
 ## Running tests
 
@@ -51,7 +61,7 @@ The recommended way to run the tests involves using the correct feature for your
 hardware accelleration. The following example is for CUDA device.
 
 ```bash
-cargo test --release --features cuda --test '*' -- --nocapture --test-threads 1
+cargo test --release --features cuda --test "*" -- --nocapture --test-threads 1
 ```
 
 With `--nocapture`, you'll be able to see the generated output. If it seems like
