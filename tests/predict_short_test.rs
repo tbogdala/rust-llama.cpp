@@ -9,11 +9,11 @@ mod common;
 #[test]
 pub fn predict_short_tokens_test() {
     let model_params = ModelOptions {
-        n_gpu_layers: common::N_GPU_LAYERS,
+        n_gpu_layers: common::get_test_n_gpu_layers(),
         ..Default::default()
     };
 
-    let llm_model = match LLama::new(common::MODEL_PATH.to_string(), &model_params) {
+    let llm_model = match LLama::new(common::get_test_model_path(), &model_params) {
         Ok(m) => m,
         Err(err) => panic!("Failed to load model: {err}"),
     };

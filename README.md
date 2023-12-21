@@ -39,9 +39,10 @@ has been paid to at least try to get it working in a reasonable manner.
 * PLATFORMS: Windows 11, MacOS and Linux are tested without any features enabled. MacOS with the `metal`
   feature has been tested and should be functional. Windows 11 and Linux have been tested with `cuda` and
   should work.
-* MAC: If some of the integration tests crash, consider the possibility that the `context_size` used in the test sends 
-  your mac out of memory. For example, my MBA M1 with 8gb of memory cannot handle a `context_size` of 4096 with 
-  7B_Q4_K_S models and I have to drop the context down to 2048.  
+* MAC: If some of the integration tests crash, consider the possibility that the `context_size` used in the test
+  sends your mac out of memory. For example, my MBA M1 with 8gb of memory cannot handle a `context_size` of 
+  4096 with 7B_Q4_K_S models and I have to drop the context down to 2048. Use the `RUST_LLAMA_CTX_LEN` env
+  variable as described in the section below.
 * WINDOWS: Make sure to install an llvm package to compile the bindings. I use scoop, so it's as 
   easy as running `scoop install llvm`. VS 2022 and Cuda 11.8 were also installed in addition to the rust
   toolchain (msvc version, the default) and the cargo commands were issued from the VS Developer Command Prompt.
@@ -67,6 +68,12 @@ cargo test --release --features cuda --test "*" -- --nocapture --test-threads 1
 With `--nocapture`, you'll be able to see the generated output. If it seems like
 nothing is happening, make sure you're using the right feature for your system.
 You also may wish to use the `--release` flag as well to speed up the tests.
+
+Environment variables can be used to customize the test harness for a few parameters:
+
+* `RUST_LLAMA_MODEL`: The relative filepath for the model to load (default is "models/model.gguf")
+* `RUST_LLAMA_GPU_LAYERS`: The number of layers to offload to the gpu (default is 100)
+* `RUST_LLAMA_CTX_LEN`: The context length to use for the test (default is 4096)
 
 ---
 

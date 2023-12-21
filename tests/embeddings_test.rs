@@ -7,13 +7,13 @@ pub fn embeddings_test() {
     // when generating embeddings, the size of the embeddings is pulled from the model from
     // within the LLama wrapper.
     let model_params = ModelOptions {
-        n_gpu_layers: common::N_GPU_LAYERS,
-        context_size: 4096,
+        n_gpu_layers: common::get_test_n_gpu_layers(),
+        context_size: common::get_test_context_length(),
         embeddings: true,
         ..Default::default()
     };
 
-    let llm_model = match LLama::new(common::MODEL_PATH.to_string(), &model_params) {
+    let llm_model = match LLama::new(common::get_test_model_path(), &model_params) {
         Ok(m) => m,
         Err(err) => panic!("Failed to load model: {err}"),
     };
