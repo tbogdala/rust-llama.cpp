@@ -55,6 +55,8 @@ impl LLama {
                 main_gpu,
                 tensor_split,
                 opts.numa,
+                opts.rope_freq_base,
+                opts.rope_freq_scale,
             );
 
             if result.ctx == std::ptr::null_mut() || result.model == std::ptr::null_mut() {

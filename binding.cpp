@@ -728,7 +728,8 @@ void *llama_allocate_params(const char *prompt, int seed, int threads, int token
     return params;
 }
 
-load_model_result load_model(const char *fname, int n_ctx, int n_seed, bool memory_f16, bool mlock, bool embeddings, bool mmap, bool vocab_only, int n_gpu_layers, int n_batch, const char *maingpu, const char *tensorsplit, bool numa)
+load_model_result load_model(const char *fname, int n_ctx, int n_seed, bool memory_f16, bool mlock, bool embeddings, bool mmap, bool vocab_only, int n_gpu_layers, 
+    int n_batch, const char *maingpu, const char *tensorsplit, bool numa, float rope_freq, float rope_scale)
 {
     // load the model
     auto lparams = llama_context_default_params();
@@ -738,6 +739,8 @@ load_model_result load_model(const char *fname, int n_ctx, int n_seed, bool memo
     lparams.seed = n_seed;
     lparams.f16_kv = memory_f16;
     lparams.embedding = embeddings;
+    lparams.rope_freq_base = rope_freq;
+    lparams.rope_freq_scale = rope_scale;
     mparams.use_mlock = mlock;
     mparams.n_gpu_layers = n_gpu_layers;
     mparams.use_mmap = mmap;

@@ -21,7 +21,7 @@ extern "C"
         void* ctx;
     } load_model_result;
     load_model_result load_model(const char *fname, int n_ctx, int n_seed, bool memory_f16, bool mlock, bool embeddings, bool mmap, bool vocab_only, 
-                                int n_gpu, int n_batch, const char *maingpu, const char *tensorsplit, bool numa);
+                                int n_gpu, int n_batch, const char *maingpu, const char *tensorsplit, bool numa, float rope_freq, float rope_scale);
 
     int get_embeddings(void *params_ptr, void *state_pr, float *res_embeddings, int *res_n_embeddings);
 

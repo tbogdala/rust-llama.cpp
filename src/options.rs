@@ -38,6 +38,12 @@ pub struct ModelOptions {
 
     // attempt optimizations that help on some NUMA systems
     pub numa: bool,
+
+    // RoPE base frequency, 0 = from model
+    pub rope_freq_base: f32, 
+
+    // RoPE frequency scaling factor, 0 = from model
+    pub rope_freq_scale: f32,     
 }
 
 impl Default for ModelOptions {
@@ -55,6 +61,8 @@ impl Default for ModelOptions {
             n_gpu_layers: 0,
             main_gpu: String::from(""),
             tensor_split: String::from(""),
+            rope_freq_base: 0.0,
+            rope_freq_scale: 0.0,
         }
     }
 }
@@ -216,7 +224,7 @@ impl Default for PredictOptions {
             token_callback: None,
             path_prompt_cache: String::from(""),
             m_lock: false,
-            m_map: false,
+            m_map: true,
             prompt_cache_all: false,
             prompt_cache_ro: false,
             main_gpu: String::from(""),
