@@ -2,6 +2,7 @@
 
 Main changes from the forked version:
 
+- [x] CHANGE: Updated llama.cpp submodule to commit [b1731](https://github.com/ggerganov/llama.cpp/releases/tag/b1731).
 - [x] ADDED:  Documentation for the structures and wrapper classes.
 - [x] ADDED:  `LLama::predict()` integration tests.
 - [x] FIXED:  Fixed a memory allocation error in `predict()` for the output buffer causing problems on free.
@@ -23,6 +24,9 @@ Main changes from the forked version:
 - [x] FIXED:  Metal support on macos should work with the `metal` feature. Also added Accelerate support for macos
               if the `metal` feature is not enabled resulting in minor performance boosts. 
 - [x] FIXED:  Cuda support on Win11 x64 should work with the `cuda` feature.
+- [x] DEL:    Removed `load_model()` and `llama_allocate_params()` parameter `memory_f16` in the bindings 
+              because it was removed upstream. Similarly, removed `ModelOptions::f16_memory` and
+              `PredictOptions::f16_kv` to match.
 
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'

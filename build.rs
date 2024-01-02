@@ -66,7 +66,7 @@ fn compile_cuda(cxx_flags: &str, outdir: &PathBuf) {
     }
 
     let libs = if cfg!(target_os = "linux") {
-        "cublas cudart cublasLt pthread dl rt"
+        "cuda culibos cublas cudart cublasLt pthread dl rt"
     } else {
         "cublas cudart cublasLt"
     };

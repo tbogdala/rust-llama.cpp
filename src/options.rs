@@ -12,9 +12,6 @@ pub struct ModelOptions {
     // prompt processing maximum batch size
     pub n_batch: i32,
 
-    // // use f16 instead of f32 for memory kv
-    pub f16_memory: bool,
-
     // force system to keep model in RAM
     pub m_lock: bool,
 
@@ -51,7 +48,6 @@ impl Default for ModelOptions {
         Self {
             context_size: 512,
             seed: 0,
-            f16_memory: true,
             m_lock: false,
             embeddings: false,
             vocab_only: false,
@@ -110,9 +106,6 @@ pub struct PredictOptions {
     // sampler option: reduces the probability of generating tokens that have recently appeared in the generated text
     // 1.0 = disabled
     pub penalty: f32,
-
-    // use f16 instead of f32 for memory kv
-    pub f16_kv: bool,
 
     // prints more verbose output when calling LLama::predict()
     pub debug_mode: bool,
@@ -208,7 +201,6 @@ impl Default for PredictOptions {
             top_p: 0.95,
             temperature: 0.8,
             penalty: 1.1,
-            f16_kv: true,
             debug_mode: false,
             stop_prompts: vec![],
             ignore_eos: false,

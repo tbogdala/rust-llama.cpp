@@ -12,7 +12,6 @@ pub fn predict_options_test() {
         seed: -1,
         n_batch: 512,
         context_size: common::get_test_context_length(),
-        f16_memory: true,
         ..Default::default()
     };
 

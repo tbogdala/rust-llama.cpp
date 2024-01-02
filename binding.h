@@ -20,7 +20,7 @@ extern "C"
         void* model;
         void* ctx;
     } load_model_result;
-    load_model_result load_model(const char *fname, int n_ctx, int n_seed, bool memory_f16, bool mlock, bool embeddings, bool mmap, bool vocab_only, 
+    load_model_result load_model(const char *fname, int n_ctx, int n_seed, bool mlock, bool embeddings, bool mmap, bool vocab_only, 
                                 int n_gpu, int n_batch, const char *maingpu, const char *tensorsplit, bool numa, float rope_freq, float rope_scale);
 
     int get_embeddings(void *params_ptr, void *state_pr, float *res_embeddings, int *res_n_embeddings);
@@ -31,7 +31,7 @@ extern "C"
     int get_llama_n_embd(void *model);
 
     void *llama_allocate_params(const char *prompt, int seed, int threads, int tokens, int top_k, float top_p, float min_p, float temp, float repeat_penalty,
-                                int repeat_last_n, bool ignore_eos, bool memory_f16, int n_batch, int n_keep, const char **antiprompt, int antiprompt_count,
+                                int repeat_last_n, bool ignore_eos, int n_batch, int n_keep, const char **antiprompt, int antiprompt_count,
                                 float tfs_z, float typical_p, float frequency_penalty, float presence_penalty, int mirostat, float mirostat_eta, 
                                 float mirostat_tau, bool penalize_nl, const char *logit_bias, const char *session_file, bool prompt_cache_all, bool mlock, 
                                 bool mmap, const char *maingpu, const char *tensorsplit, bool prompt_cache_ro, float rope_freq_base, float rope_freq_scale, 
