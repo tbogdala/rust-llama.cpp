@@ -47,7 +47,6 @@ has been paid to at least try to get it working in a reasonable manner.
 * WINDOWS: Make sure to install an llvm package to compile the bindings. I use scoop, so it's as 
   easy as running `scoop install llvm`. VS 2022 and Cuda 11.8 were also installed in addition to the rust
   toolchain (msvc version, the default) and the cargo commands were issued from the VS Developer Command Prompt.
-* KNOWN BUG: Using rope scaling parameters doesn't seem to work right now for unknown reasons.
 
 
 ## Running tests
