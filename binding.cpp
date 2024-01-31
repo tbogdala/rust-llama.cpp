@@ -161,7 +161,8 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
     llama_predict_result return_value;
     
     llama_set_n_threads(ctx, params_p->n_threads, params_p->n_threads_batch);
-    
+    llama_kv_cache_clear(ctx);
+        
     // print system information
     {
         // TODO: Update the build.rs file to generate llama.cpp/common/build-info.cpp
@@ -533,6 +534,7 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
 
                 n_past += n_eval;
                 LOG("n_past = %d\n", n_past);
+                LOG("\nTokens consumed so far = %d / %d\n", n_past, n_ctx);
             }
 
             if (!embd.empty() && !path_session.empty()) {

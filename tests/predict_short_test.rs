@@ -1,6 +1,9 @@
 use std::io::{self, Write};
 
-use llama_cpp_rs::{options::{ModelOptions, PredictOptions}, LLama};
+use llama_cpp_rs::{
+    options::{ModelOptions, PredictOptions},
+    LLama,
+};
 
 mod common;
 
@@ -9,6 +12,7 @@ mod common;
 #[test]
 pub fn predict_short_tokens_test() {
     let model_params = ModelOptions {
+        context_size: common::get_test_context_length(),
         n_gpu_layers: common::get_test_n_gpu_layers(),
         ..Default::default()
     };
@@ -20,22 +24,22 @@ pub fn predict_short_tokens_test() {
 
     let predict_options = PredictOptions {
         tokens: 64,
-        token_callback: Some(Box::new(|token| {
+        token_callback: Some(|token| {
             print!("{}", token);
             let _ = io::stdout().flush();
             true
-        })),
+        }),
         ..Default::default()
     };
 
     let prompt = "USER: What are the high level steps are required to implement a raytracing engine?\nASSISTANT:";
 
-    let result = llm_model.predict(prompt.to_string(), predict_options);
-    if let Ok((_, timings)) = result {
-        println!("\n\nTiming Data: {} tokens total in {:.2} ms ; {:.2} T/s\n",
-            timings.n_eval, 
-            (timings.t_end_ms - timings.t_start_ms),
-            1e3 / (timings.t_end_ms - timings.t_start_ms) * timings.n_eval as f64);
-    }
-
+    let result = llm_model.predict(prompt.to_string(), &predict_options);
+    let (_, timings) = result.unwrap();
+    println!(
+        "\n\nTiming Data: {} tokens total in {:.2} ms ; {:.2} T/s\n",
+        timings.n_eval,
+        (timings.t_end_ms - timings.t_start_ms),
+        1e3 / (timings.t_end_ms - timings.t_start_ms) * timings.n_eval as f64
+    );
 }

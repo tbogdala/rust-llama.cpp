@@ -6,7 +6,7 @@ use std::{
     sync::Mutex,
 };
 
-use options::{ModelOptions, PredictOptions};
+use options::{ModelOptions, PredictOptions, TokenCallbackFn};
 
 use lazy_static::lazy_static;
 
@@ -15,8 +15,7 @@ pub mod options;
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 lazy_static! {
-    static ref CALLBACKS: Mutex<HashMap<usize, Box<dyn Fn(String) -> bool + Send + 'static>>> =
-        Mutex::new(HashMap::new());
+    static ref CALLBACKS: Mutex<HashMap<usize, TokenCallbackFn>> = Mutex::new(HashMap::new());
 }
 
 #[derive(Debug, Clone)]
@@ -221,7 +220,8 @@ impl LLama {
             let embedding_size: i32 = get_llama_n_embd(self.model);
 
             let mut out = Vec::with_capacity((embedding_size) as usize);
-            let mut my_array: Vec<i32> = Vec::with_capacity(opts.tokens as usize * size_of::<i32>());
+            let mut my_array: Vec<i32> =
+                Vec::with_capacity(opts.tokens as usize * size_of::<i32>());
 
             for (i, &v) in tokens.iter().enumerate() {
                 my_array[i] = v;
@@ -289,14 +289,13 @@ impl LLama {
                 my_array.as_mut_ptr(),
                 my_array.len() as i32,
                 out.as_mut_ptr(),
-                &mut emb_count
+                &mut emb_count,
             );
             llama_free_params(params);
 
             if ret != 0 {
                 return Err("Embedding inference failed".into());
             }
-            
 
             out.set_len(emb_count as usize);
             Ok(out)
@@ -338,7 +337,7 @@ impl LLama {
         if !reverse_prompt.is_empty() {
             pass = reverse_prompt.as_mut_ptr();
         }
- 
+
         unsafe {
             let embedding_size: i32 = get_llama_n_embd(self.model);
 
@@ -410,29 +409,21 @@ impl LLama {
         }
     }
 
-    pub fn set_token_callback(
-        &self,
-        callback: Option<Box<dyn Fn(String) -> bool + Send + 'static>>,
-    ) {
-        set_callback(self.ctx, callback);
-    }
-
     // Does text inference with the loaded model given the `text` prompt and controlled by the PredictOptions
     // passed in. If `token_callback` is set in `opts`, that function will be called each time
     // a new token is predicted.
     // The function returns a tuple of the predicted string and the timing data for the prediction.
-    pub fn predict(&self, text: String, opts: PredictOptions) -> Result<(String, LLamaPredictTimings), Box<dyn Error>> {
+    pub fn predict(
+        &self,
+        text: String,
+        opts: &PredictOptions,
+    ) -> Result<(String, LLamaPredictTimings), Box<dyn Error>> {
         let c_str = CString::new(text.clone()).unwrap();
 
         let input = c_str.as_ptr();
-        let mut opts = opts;
 
-        if opts.tokens == 0 {
-            opts.tokens = 99999999;
-        }
-        
-        if let Some(callback) = opts.token_callback {
-            set_callback(self.ctx, Some(callback));
+        if let Some(callback) = &opts.token_callback {
+            set_callback(self.ctx, callback.clone());
         }
 
         let reverse_count = opts.stop_prompts.len();
@@ -453,7 +444,7 @@ impl LLama {
             pass = reverse_prompt.as_mut_ptr();
         }
 
-        // assume a little on the heavy side at 4 characters per token, then multiply by 4 again for 
+        // assume a little on the heavy side at 4 characters per token, then multiply by 4 again for
         // a character size of 4 bytes. also, we allocate a buffer to handle the whole context size.
         // FIXME: a better solution might be passing in a length as well to llama_predict and abort generation
         // when that limit is hit instead of allowing an overflow.
@@ -513,8 +504,14 @@ impl LLama {
                 opts.rope_freq_scale,
                 opts.n_draft,
             );
- 
-            let ret = llama_predict(params, self.ctx, self.model, out.as_mut_ptr(), opts.debug_mode);
+
+            let ret = llama_predict(
+                params,
+                self.ctx,
+                self.model,
+                out.as_mut_ptr(),
+                opts.debug_mode,
+            );
             llama_free_params(params);
             if ret.result != 0 {
                 return Err("Failed to predict".into());
@@ -566,17 +563,15 @@ impl Drop for LLama {
     }
 }
 
-fn set_callback(
-    state: *mut c_void,
-    callback: Option<Box<dyn Fn(String) -> bool + Send + 'static>>,
-) {
+fn set_callback(state: *mut c_void, callback: TokenCallbackFn) {
     let mut callbacks = CALLBACKS.lock().unwrap();
+    callbacks.insert(state as usize, callback);
+}
 
-    if let Some(callback) = callback {
-        callbacks.insert(state as usize, callback);
-    } else {
-        callbacks.remove(&(state as usize));
-    }
+#[allow(dead_code)]
+fn clear_callback(state: *mut c_void) {
+    let mut callbacks = CALLBACKS.lock().unwrap();
+    callbacks.remove(&(state as usize));
 }
 
 #[no_mangle]

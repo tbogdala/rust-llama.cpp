@@ -1,5 +1,5 @@
-use std::{env, fs};
 use std::path::PathBuf;
+use std::{env, fs};
 
 use cc::Build;
 
@@ -54,10 +54,7 @@ fn compile_cuda(cxx_flags: &str, outdir: &PathBuf) {
     // impact the success chances of this build script.
     let cuda_path = std::env::var("CUDA_PATH").unwrap_or_default();
     if cfg!(target_os = "windows") {
-        println!(
-            "cargo:rustc-link-search=native={}/lib/x64",
-            cuda_path
-        );
+        println!("cargo:rustc-link-search=native={}/lib/x64", cuda_path);
     } else {
         println!(
             "cargo:rustc-link-search=native={}/targets/x86_64-linux/lib",
@@ -107,10 +104,10 @@ fn compile_cuda(cxx_flags: &str, outdir: &PathBuf) {
 
     if cfg!(target_os = "linux") {
         nvcc.compiler("nvcc")
-        .file("./llama.cpp/ggml-cuda.cu")
-        .flag("-Wno-pedantic")
-        .include("./llama.cpp/ggml-cuda.h")
-        .compile("ggml-cuda");
+            .file("./llama.cpp/ggml-cuda.cu")
+            .flag("-Wno-pedantic")
+            .include("./llama.cpp/ggml-cuda.h")
+            .compile("ggml-cuda");
     } else {
         let include_path = format!("{}\\include", cuda_path);
 
@@ -152,7 +149,8 @@ fn compile_cuda(cxx_flags: &str, outdir: &PathBuf) {
             .arg("-DWIN32")
             .arg(r"-Illama.cpp\include\ggml")
             .arg(r"llama.cpp\ggml-cuda.cu")
-            .status().unwrap();
+            .status()
+            .unwrap();
 
         nvcc.object(&object_file);
         nvcc.flag("-DGGML_USE_CUBLAS");
@@ -169,10 +167,10 @@ fn compile_ggml(cx: &mut Build, cx_flags: &str) {
         .file("./llama.cpp/ggml.c")
         .file("./llama.cpp/ggml-alloc.c")
         .file("./llama.cpp/ggml-backend.c")
-	    .file("./llama.cpp/ggml-quants.c")
+        .file("./llama.cpp/ggml-quants.c")
         .cpp(false)
-	.define("_GNU_SOURCE", None)
-	.define("GGML_USE_K_QUANTS", None)
+        .define("_GNU_SOURCE", None)
+        .define("GGML_USE_K_QUANTS", None)
         .compile("ggml");
 }
 
@@ -201,8 +199,7 @@ fn compile_metal(cx: &mut Build, cxx: &mut Build, out: &PathBuf) {
         .replace('\r', "\\r")
         .replace('\"', "\\\"");
 
-    let ggml_metal =
-        std::fs::read_to_string(GGML_METAL_PATH).expect("Could not read ggml-metal.m");
+    let ggml_metal = std::fs::read_to_string(GGML_METAL_PATH).expect("Could not read ggml-metal.m");
 
     let needle = r#"NSString * src = [NSString stringWithContentsOfFile:sourcePath encoding:NSUTF8StringEncoding error:&error];"#;
     if !ggml_metal.contains(needle) {
@@ -266,12 +263,16 @@ fn compile_llama(cxx: &mut Build, cxx_flags: &str, out_path: &PathBuf, ggml_type
         // for some reason, this only appears to be needed under windows?
         let build_info_str = std::process::Command::new("sh")
             .arg("llama.cpp/scripts/build-info.sh")
-            .output().expect("Failed to generate llama.cpp/common/build-info.cpp from the shell script.");
-        
-        let mut build_info_file = fs::File::create("llama.cpp/common/build-info.cpp").expect("Could not create llama.cpp/common/build-info.cpp file");
-        std::io::Write::write_all(&mut build_info_file, &build_info_str.stdout).expect("Could not write to llama.cpp/common/build-info.cpp file");
+            .output()
+            .expect("Failed to generate llama.cpp/common/build-info.cpp from the shell script.");
 
-        cxx.shared_flag(true).file("./llama.cpp/common/build-info.cpp");
+        let mut build_info_file = fs::File::create("llama.cpp/common/build-info.cpp")
+            .expect("Could not create llama.cpp/common/build-info.cpp file");
+        std::io::Write::write_all(&mut build_info_file, &build_info_str.stdout)
+            .expect("Could not write to llama.cpp/common/build-info.cpp file");
+
+        cxx.shared_flag(true)
+            .file("./llama.cpp/common/build-info.cpp");
     }
 
     // HACK: gonna use the same trick used to patch the metal shader into ggml
@@ -280,19 +281,27 @@ fn compile_llama(cxx: &mut Build, cxx_flags: &str, out_path: &PathBuf, ggml_type
     const PATCHED_LLAMACPP_PATH: &str = "llama.cpp/llama-patched.cpp";
     let llamacpp_code =
         std::fs::read_to_string(LLAMACPP_PATH).expect("Could not read llama.cpp source file.");
-    let needle1 = r#"#define LLAMA_LOG_INFO(...)  llama_log_internal(GGML_LOG_LEVEL_INFO , __VA_ARGS__)"#;
-    let needle2 = r#"#define LLAMA_LOG_WARN(...)  llama_log_internal(GGML_LOG_LEVEL_WARN , __VA_ARGS__)"#;
-    let needle3 = r#"#define LLAMA_LOG_ERROR(...) llama_log_internal(GGML_LOG_LEVEL_ERROR, __VA_ARGS__)"#;
-    if !llamacpp_code.contains(needle1) || !llamacpp_code.contains(needle2) || !llamacpp_code.contains(needle3) {
+    let needle1 =
+        r#"#define LLAMA_LOG_INFO(...)  llama_log_internal(GGML_LOG_LEVEL_INFO , __VA_ARGS__)"#;
+    let needle2 =
+        r#"#define LLAMA_LOG_WARN(...)  llama_log_internal(GGML_LOG_LEVEL_WARN , __VA_ARGS__)"#;
+    let needle3 =
+        r#"#define LLAMA_LOG_ERROR(...) llama_log_internal(GGML_LOG_LEVEL_ERROR, __VA_ARGS__)"#;
+    if !llamacpp_code.contains(needle1)
+        || !llamacpp_code.contains(needle2)
+        || !llamacpp_code.contains(needle3)
+    {
         panic!("llama.cpp does not contain the needles to be replaced; the patching logic needs to be reinvestigated!");
     }
     let patched_llamacpp_code = llamacpp_code
-        .replace(needle1, "#include \"log.h\"\n#define LLAMA_LOG_INFO(...)  LOG(__VA_ARGS__)")
+        .replace(
+            needle1,
+            "#include \"log.h\"\n#define LLAMA_LOG_INFO(...)  LOG(__VA_ARGS__)",
+        )
         .replace(needle2, "#define LLAMA_LOG_WARN(...)  LOG(__VA_ARGS__)")
         .replace(needle3, "#define LLAMA_LOG_ERROR(...) LOG(__VA_ARGS__)");
     std::fs::write(&PATCHED_LLAMACPP_PATH, patched_llamacpp_code)
         .expect("Attempted to write the patched llama.cpp file out to llama-patched.cpp");
-
 
     cxx.shared_flag(true)
         .file("./llama.cpp/common/common.cpp")
@@ -326,7 +335,9 @@ fn main() {
     let mut cxx = cc::Build::new();
     let mut ggml_type = String::new();
 
-    cxx.include("./llama.cpp/common").include("./llama.cpp").include("./include_shims");
+    cxx.include("./llama.cpp/common")
+        .include("./llama.cpp")
+        .include("./include_shims");
 
     if cfg!(feature = "opencl") {
         compile_opencl(&mut cx, &mut cxx);
@@ -368,7 +379,6 @@ fn main() {
 
         compile_cuda(&cxx_flags, &out_path);
 
-        
         if !cfg!(feature = "logfile") {
             cxx.define("LOG_DISABLE_LOGS", None);
         }

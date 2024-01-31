@@ -1,6 +1,9 @@
 use std::io::{self, Write};
 
-use llama_cpp_rs::{options::{ModelOptions, PredictOptions}, LLama};
+use llama_cpp_rs::{
+    options::{ModelOptions, PredictOptions},
+    LLama,
+};
 
 mod common;
 
@@ -29,21 +32,22 @@ pub fn predict_options_test() {
         penalty: 1.03,
         ignore_eos: true,
         stop_prompts: vec!["As an AI assisant:".to_string(), "OpenAI".to_string()],
-        token_callback: Some(Box::new(|token| {
+        token_callback: Some(|token| {
             print!("{}", token);
             let _ = io::stdout().flush();
             true
-        })),
+        }),
         ..Default::default()
     };
 
     let prompt = "USER: Write the start to the next movie collaboration between Quentin Tarantino and Robert Rodriguez.\nASSISTANT:";
 
-    let result = llm_model.predict(prompt.to_string(), predict_options);
-    if let Ok((_, timings)) = result {
-        println!("\n\nTiming Data: {} tokens total in {:.2} ms ; {:.2} T/s\n",
-            timings.n_eval, 
-            (timings.t_end_ms - timings.t_start_ms),
-            1e3 / (timings.t_end_ms - timings.t_start_ms) * timings.n_eval as f64);
-    }
+    let result = llm_model.predict(prompt.to_string(), &predict_options);
+    let (_, timings) = result.unwrap();
+    println!(
+        "\n\nTiming Data: {} tokens total in {:.2} ms ; {:.2} T/s\n",
+        timings.n_eval,
+        (timings.t_end_ms - timings.t_start_ms),
+        1e3 / (timings.t_end_ms - timings.t_start_ms) * timings.n_eval as f64
+    );
 }

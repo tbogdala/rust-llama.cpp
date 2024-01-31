@@ -1,4 +1,7 @@
-use llama_cpp_rs::{options::{ModelOptions, PredictOptions}, LLama};
+use llama_cpp_rs::{
+    options::{ModelOptions, PredictOptions},
+    LLama,
+};
 
 mod common;
 
@@ -23,7 +26,9 @@ pub fn embeddings_test() {
     };
 
     let test_prompt = "That is a happy person";
-    let embeddings = llm_model.embeddings(test_prompt.to_string(), &mut predict_options).unwrap();
+    let embeddings = llm_model
+        .embeddings(test_prompt.to_string(), &mut predict_options)
+        .unwrap();
 
     // make sure we got some embeddings and that there's at least one that's not zero-ish.
     assert!(embeddings.len() > 0);
@@ -43,7 +48,9 @@ pub fn embeddings_test() {
 
     println!("Comparing this prompt: \"{}\"", test_prompt);
     for test_prompt in test_prompts {
-        let cmp_embeddings = llm_model.embeddings(test_prompt.to_string(), &mut predict_options).unwrap();
+        let cmp_embeddings = llm_model
+            .embeddings(test_prompt.to_string(), &mut predict_options)
+            .unwrap();
         let score = cosine_similarity(&embeddings, &cmp_embeddings);
         println!("  Similarity {}: \"{}\"", score, test_prompt);
     }

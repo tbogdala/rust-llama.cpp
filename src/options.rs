@@ -1,5 +1,7 @@
 // The following structures have documentation comments pulled from the llamacpp source headers where possible.
 
+use std::rc::Rc;
+
 // Options controlling how the LLM model loads and behaves at runtime
 #[derive(Debug, Clone)]
 pub struct ModelOptions {
@@ -37,10 +39,10 @@ pub struct ModelOptions {
     pub numa: bool,
 
     // RoPE base frequency, 0 = from model
-    pub rope_freq_base: f32, 
+    pub rope_freq_base: f32,
 
     // RoPE frequency scaling factor, 0 = from model
-    pub rope_freq_scale: f32,     
+    pub rope_freq_scale: f32,
 }
 
 impl Default for ModelOptions {
@@ -63,7 +65,10 @@ impl Default for ModelOptions {
     }
 }
 
+pub type TokenCallbackFn = fn(String) -> bool;
+
 // Options controlling the behavior of LLama functionality and text prediction.
+#[derive(Clone)]
 pub struct PredictOptions {
     // RNG seed, -1 for random
     pub seed: i32,
@@ -94,7 +99,7 @@ pub struct PredictOptions {
     pub top_p: f32,
 
     // sampler option: vase minimum probability threshold for token sampling (scaled by top token). for example,
-    // a min_p setting of 0.05, with a top token at 0.90 probability, results in the minimum required probability 
+    // a min_p setting of 0.05, with a top token at 0.90 probability, results in the minimum required probability
     // becoming 4.5% (0.05 * 0.9).
     // 0.0 = disabled
     pub min_p: f32,
@@ -117,15 +122,15 @@ pub struct PredictOptions {
     // ignore generated EOS tokens
     pub ignore_eos: bool,
 
-    // sampler option: prioritizes sampling points identified by curvature changes in the probability distribution, 
+    // sampler option: prioritizes sampling points identified by curvature changes in the probability distribution,
     // aiming for diverse outputs beyond frequent & rare categories. Values > 1.0 might reinforce common outputs,
     // where values < 1.0 might encourages diversity and exploration.
     // 1.0 = disabled
     pub tail_free_sampling_z: f32,
 
-    // sampler option: samples from "typical" regions of the probability space, balancing diversity & plausibility 
+    // sampler option: samples from "typical" regions of the probability space, balancing diversity & plausibility
     // for more creative yet relevant outputs. Values > 1.0 focuses on regions with higher confidence resulting
-    // in more plausible outputs but potentially less diverse. Values < 1.0 considers regions with broader range of probabilities, 
+    // in more plausible outputs but potentially less diverse. Values < 1.0 considers regions with broader range of probabilities,
     // may lead to more diverse outputs but might include less common or expected results.
     // 1.0 = disabled
     pub typical_p: f32,
@@ -155,8 +160,8 @@ pub struct PredictOptions {
     pub logit_bias: String,
 
     // optional callback function that receives tokens as they're predicted
-    pub token_callback: Option<Box<dyn Fn(String) -> bool + Send + 'static>>,
-    
+    pub token_callback: Option<TokenCallbackFn>,
+
     // path to file for saving/loading prompt eval state
     pub path_prompt_cache: String,
 
@@ -179,10 +184,10 @@ pub struct PredictOptions {
     pub tensor_split: String,
 
     // RoPE base frequency, 0 = from model
-    pub rope_freq_base: f32, 
+    pub rope_freq_base: f32,
 
     // RoPE frequency scaling factor, 0 = from model
-    pub rope_freq_scale: f32, 
+    pub rope_freq_scale: f32,
 
     // number of tokens to draft during speculative decoding
     pub n_draft: i32,
