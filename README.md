@@ -30,9 +30,13 @@ Main changes from the forked version:
 - [x] CHANGE: The C++ bindings function `llama_predict()` got reworked to be in line with the
               current `llama.cpp/examples/main/main.cpp` example workflow.
 - [x] FIXED:  `tokenCallback()` now uses `to_string_lossy()` in case the sent token is not valid UTF8.
-- [x] CHANGE: Added a `logfile` feature to the crate. All logging statements in the bindings use the `LOG*`
+- [x] ADDED:  Added a `logfile` feature to the crate. All logging statements in the bindings use the `LOG*`
               macros now and if that feature is enabled, a `llama.log` file will get created with the 
               output of all these `LOG*` macro calls.
+- [x] ADDED:  The `lamma.cpp/llama.cpp` source file is now patched to use the `LOG` macro from their
+              `lamma.cpp/common/log.h` file for logging. For now the GGML spam remains, but there should
+              be no more output from this wrapper after that unless the `logfile` feature is enabled - 
+              and even then, it should only get directed there.
 
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'

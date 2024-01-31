@@ -206,7 +206,7 @@ fn compile_metal(cx: &mut Build, cxx: &mut Build, out: &PathBuf) {
 
     let needle = r#"NSString * src = [NSString stringWithContentsOfFile:sourcePath encoding:NSUTF8StringEncoding error:&error];"#;
     if !ggml_metal.contains(needle) {
-        panic!("ggml-metal.m does not contain the needle to be replaced; the patching logic needs to be reinvestigated. Contact a `llm` developer!");
+        panic!("ggml-metal.m does not contain the needle to be replaced; the patching logic needs to be reinvestigated.");
     }
 
     // Replace the runtime read of the file with a compile-time string
@@ -274,11 +274,31 @@ fn compile_llama(cxx: &mut Build, cxx_flags: &str, out_path: &PathBuf, ggml_type
         cxx.shared_flag(true).file("./llama.cpp/common/build-info.cpp");
     }
 
+    // HACK: gonna use the same trick used to patch the metal shader into ggml
+    // to redirect the logging macros in llama.cpp to the LOG macro in log.h.
+    const LLAMACPP_PATH: &str = "llama.cpp/llama.cpp";
+    const PATCHED_LLAMACPP_PATH: &str = "llama.cpp/llama-patched.cpp";
+    let llamacpp_code =
+        std::fs::read_to_string(LLAMACPP_PATH).expect("Could not read llama.cpp source file.");
+    let needle1 = r#"#define LLAMA_LOG_INFO(...)  llama_log_internal(GGML_LOG_LEVEL_INFO , __VA_ARGS__)"#;
+    let needle2 = r#"#define LLAMA_LOG_WARN(...)  llama_log_internal(GGML_LOG_LEVEL_WARN , __VA_ARGS__)"#;
+    let needle3 = r#"#define LLAMA_LOG_ERROR(...) llama_log_internal(GGML_LOG_LEVEL_ERROR, __VA_ARGS__)"#;
+    if !llamacpp_code.contains(needle1) || !llamacpp_code.contains(needle2) || !llamacpp_code.contains(needle3) {
+        panic!("llama.cpp does not contain the needles to be replaced; the patching logic needs to be reinvestigated!");
+    }
+    let patched_llamacpp_code = llamacpp_code
+        .replace(needle1, "#include \"log.h\"\n#define LLAMA_LOG_INFO(...)  LOG(__VA_ARGS__)")
+        .replace(needle2, "#define LLAMA_LOG_WARN(...)  LOG(__VA_ARGS__)")
+        .replace(needle3, "#define LLAMA_LOG_ERROR(...) LOG(__VA_ARGS__)");
+    std::fs::write(&PATCHED_LLAMACPP_PATH, patched_llamacpp_code)
+        .expect("Attempted to write the patched llama.cpp file out to llama-patched.cpp");
+
+
     cxx.shared_flag(true)
         .file("./llama.cpp/common/common.cpp")
         .file("./llama.cpp/common/sampling.cpp")
         .file("./llama.cpp/common/grammar-parser.cpp")
-        .file("./llama.cpp/llama.cpp")
+        .file("./llama.cpp/llama-patched.cpp")
         .file("./binding.cpp")
         .cpp(true)
         .compile("binding");
