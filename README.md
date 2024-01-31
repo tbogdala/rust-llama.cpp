@@ -27,6 +27,12 @@ Main changes from the forked version:
 - [x] DEL:    Removed `load_model()` and `llama_allocate_params()` parameter `memory_f16` in the bindings 
               because it was removed upstream. Similarly, removed `ModelOptions::f16_memory` and
               `PredictOptions::f16_kv` to match.
+- [x] CHANGE: The C++ bindings function `llama_predict()` got reworked to be in line with the
+              current `llama.cpp/examples/main/main.cpp` example workflow.
+- [x] FIXED:  `tokenCallback()` now uses `to_string_lossy()` in case the sent token is not valid UTF8.
+- [x] CHANGE: Added a `logfile` feature to the crate. All logging statements in the bindings use the `LOG*`
+              macros now and if that feature is enabled, a `llama.log` file will get created with the 
+              output of all these `LOG*` macro calls.
 
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'
@@ -34,7 +40,8 @@ once tested well enough.
 
 Behavior of the original repo isn't guaranteed to stay the same! Any deviations should be mentioned
 in the above list. **HOWEVER** ... if there's unit tests for a method, you can be sure some attention
-has been paid to at least try to get it working in a reasonable manner.
+has been paid to at least try to get it working in a reasonable manner. The version numbers for this fork
+will also no longer keep parity with the original repo and will change as needed for this fork.
 
 
 ### Notes:

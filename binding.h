@@ -7,7 +7,7 @@ extern "C"
 
 #include <stdbool.h>
 
-    extern unsigned char tokenCallback(void *, char *);
+    extern unsigned char tokenCallback(void *, const char *);
 
     int load_state(void *ctx, char *statefile, char *modes);
 
@@ -59,7 +59,7 @@ extern "C"
         int n_eval;
     } llama_predict_result;
 
-    llama_predict_result llama_predict(void *params_ptr, void *state_pr, char *result, bool debug);    
+    llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_ptr, char *result, bool debug);    
 
 #ifdef __cplusplus
 }

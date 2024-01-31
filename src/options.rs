@@ -69,6 +69,7 @@ pub struct PredictOptions {
     pub seed: i32,
 
     // number of threads to use for generation and batch processing
+    // (llama.cpp will throttle this to 1 in cublas or vulkan are used with all layers offloaded to gpu)
     pub threads: i32,
 
     // the number of new tokens to predict

@@ -18,6 +18,7 @@ pub fn get_test_n_gpu_layers() -> i32 {
 }
 
 // the size of the context to use for the model
+#[allow(dead_code)]
 pub fn get_test_context_length() -> i32 {
     let var_str = std::env::var("RUST_LLAMA_CTX_LEN").unwrap_or(CONTEXT_LENGTH.to_string());
     var_str.parse().unwrap_or(4096)

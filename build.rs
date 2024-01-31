@@ -276,6 +276,8 @@ fn compile_llama(cxx: &mut Build, cxx_flags: &str, out_path: &PathBuf, ggml_type
 
     cxx.shared_flag(true)
         .file("./llama.cpp/common/common.cpp")
+        .file("./llama.cpp/common/sampling.cpp")
+        .file("./llama.cpp/common/grammar-parser.cpp")
         .file("./llama.cpp/llama.cpp")
         .file("./binding.cpp")
         .cpp(true)
@@ -346,10 +348,17 @@ fn main() {
 
         compile_cuda(&cxx_flags, &out_path);
 
+        
+        if !cfg!(feature = "logfile") {
+            cxx.define("LOG_DISABLE_LOGS", None);
+        }
         compile_llama(&mut cxx, &cxx_flags, &out_path, "cuda");
     } else {
         compile_ggml(&mut cx, &cx_flags);
 
+        if !cfg!(feature = "logfile") {
+            cxx.define("LOG_DISABLE_LOGS", None);
+        }
         compile_llama(&mut cxx, &cxx_flags, &out_path, &ggml_type);
     }
 }

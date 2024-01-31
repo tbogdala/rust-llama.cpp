@@ -1,5 +1,5 @@
 [package]
-authors = ["mdrokz <mohammadmunshi@gmail.com>"]
+authors = ["mdrokz <mohammadmunshi@gmail.com>", "Timothy Bogdala <tdb@animal-machine.com>"]
 name = "llama_cpp_rs"
 description = "Rust bindings for LLAMA.CPP inference"
 categories = [
@@ -19,7 +19,7 @@ exclude = ["/examples", "/example_test"]
 license-file = "LICENSE"
 readme = "README.md"
 repository = "https://github.com/mdrokz/rust-llama.cpp"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -41,3 +41,4 @@ cuda = []
 metal = []
 openblas = []
 blis = []
+logfile = [] # writes internal log statements out to a 'llama.log' file.

@@ -21,7 +21,7 @@ lazy_static! {
 
 #[derive(Debug, Clone)]
 pub struct LLama {
-    state: *mut c_void,
+    ctx: *mut c_void,
     model: *mut c_void,
     embeddings: bool,
     context_size: i32,
@@ -62,7 +62,7 @@ impl LLama {
                 return Err("Failed to load model".into());
             } else {
                 Ok(Self {
-                    state: result.ctx,
+                    ctx: result.ctx,
                     model: result.model,
                     embeddings: opts.embeddings,
                     context_size: opts.context_size,
@@ -73,11 +73,11 @@ impl LLama {
 
     // Frees the encapsulated state object being wrapped by this class.
     pub fn free_model(&mut self) {
-        if !self.state.is_null() {
+        if !self.ctx.is_null() {
             unsafe {
-                llama_binding_free_model(self.state, self.model);
+                llama_binding_free_model(self.ctx, self.model);
             }
-            self.state = std::ptr::null_mut();
+            self.ctx = std::ptr::null_mut();
             self.model = std::ptr::null_mut();
         }
     }
@@ -87,7 +87,7 @@ impl LLama {
         let w = CString::new("rb").unwrap().into_raw();
 
         unsafe {
-            let result = load_state(self.state, d, w);
+            let result = load_state(self.ctx, d, w);
 
             if result != 0 {
                 return Err("Failed to load state".into());
@@ -102,7 +102,7 @@ impl LLama {
         let w = CString::new("wb").unwrap().into_raw();
 
         unsafe {
-            save_state(self.state, d, w);
+            save_state(self.ctx, d, w);
         };
 
         std::fs::metadata(dst).map_err(|_| "Failed to save state".to_string())?;
@@ -193,7 +193,7 @@ impl LLama {
                 opts.n_draft,
             );
 
-            let ret = eval(params, self.state, input2);
+            let ret = eval(params, self.ctx, input2);
             llama_free_params(params);
 
             if ret != 0 {
@@ -285,7 +285,7 @@ impl LLama {
             let mut emb_count: i32 = 0;
             let ret = get_token_embeddings(
                 params,
-                self.state,
+                self.ctx,
                 my_array.as_mut_ptr(),
                 my_array.len() as i32,
                 out.as_mut_ptr(),
@@ -398,7 +398,7 @@ impl LLama {
             );
 
             let mut emb_count: i32 = 0;
-            let ret = get_embeddings(params, self.state, out.as_mut_ptr(), &mut emb_count);
+            let ret = get_embeddings(params, self.ctx, out.as_mut_ptr(), &mut emb_count);
             llama_free_params(params);
 
             if ret != 0 {
@@ -414,7 +414,7 @@ impl LLama {
         &self,
         callback: Option<Box<dyn Fn(String) -> bool + Send + 'static>>,
     ) {
-        set_callback(self.state, callback);
+        set_callback(self.ctx, callback);
     }
 
     // Does text inference with the loaded model given the `text` prompt and controlled by the PredictOptions
@@ -432,7 +432,7 @@ impl LLama {
         }
         
         if let Some(callback) = opts.token_callback {
-            set_callback(self.state, Some(callback));
+            set_callback(self.ctx, Some(callback));
         }
 
         let reverse_count = opts.stop_prompts.len();
@@ -513,8 +513,8 @@ impl LLama {
                 opts.rope_freq_scale,
                 opts.n_draft,
             );
-
-            let ret = llama_predict(params, self.state, out.as_mut_ptr(), opts.debug_mode);
+ 
+            let ret = llama_predict(params, self.ctx, self.model, out.as_mut_ptr(), opts.debug_mode);
             llama_free_params(params);
             if ret.result != 0 {
                 return Err("Failed to predict".into());
@@ -585,9 +585,7 @@ extern "C" fn tokenCallback(state: *mut c_void, token: *const c_char) -> bool {
 
     if let Some(callback) = callbacks.get_mut(&(state as usize)) {
         let c_str: &CStr = unsafe { CStr::from_ptr(token) };
-        let str_slice: &str = c_str.to_str().unwrap();
-        let string: String = str_slice.to_owned();
-
+        let string = c_str.to_string_lossy().to_string();
         return callback(string);
     }
 
