@@ -212,19 +212,6 @@ fn compile_metal(cx: &mut Build, cxx: &mut Build, out: &PathBuf) {
         &format!(r#"NSString * src  = @"{ggml_metal_metal}";"#),
     );
 
-    // Replace the judicious use of `fprintf` with the already-existing `metal_printf`,
-    // backing up the definition of `metal_printf` first
-    let ggml_metal = ggml_metal
-        .replace(
-            r#"#define metal_printf(...) fprintf(stderr, __VA_ARGS__)"#,
-            "METAL_PRINTF_DEFINITION",
-        )
-        .replace("fprintf(stderr,", "metal_printf(")
-        .replace(
-            "METAL_PRINTF_DEFINITION",
-            r#"#define metal_printf(...) fprintf(stderr, __VA_ARGS__)"#,
-        );
-
     let patched_ggml_metal_path = out.join("ggml-metal.m");
     std::fs::write(&patched_ggml_metal_path, ggml_metal)
         .expect("Could not write temporary patched ggml-metal.m");
