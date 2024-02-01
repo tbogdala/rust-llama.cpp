@@ -1,4 +1,7 @@
-use std::io::{self, Write};
+use std::{
+    io::{self, Write},
+    sync::Arc,
+};
 
 use llama_cpp_rs::{
     options::{ModelOptions, PredictOptions},
@@ -32,11 +35,11 @@ pub fn predict_options_test() {
         penalty: 1.03,
         ignore_eos: true,
         stop_prompts: vec!["As an AI assisant:".to_string(), "OpenAI".to_string()],
-        token_callback: Some(|token| {
+        token_callback: Some(Arc::new(|token| {
             print!("{}", token);
             let _ = io::stdout().flush();
             true
-        }),
+        })),
         ..Default::default()
     };
 

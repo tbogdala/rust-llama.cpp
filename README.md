@@ -17,7 +17,8 @@ Main changes from the forked version:
 - [x] ADDED:  `PredictOptions::{rope_freq_base, rope_freq_scale}` added
 - [x] DEL:    Removed all of the needless 'setters' for the options classes.
 - [x] ADDED:  `PredictOptions::min_p` for min_p sampling.
-- [x] CHANGE: `LLama::predict()` now returns a tuple in the result: the inferred text and a struct containing timing data
+- [x] CHANGE: `LLama::predict()` now returns a tuple in the result: the inferred text and a struct 
+              containing timing data.
 - [x] CHANGE: `load_model()` now returns a struct with both the loaded ctx and model. LLama now stores both pointers.
 - [x] FIXED:  Fixed crashing from multiple `free_model()` invocations; updated basic_test integration test for verification.
 - [x] FIXED:  Models now get their memory free'd now too instead of just the context.
@@ -37,6 +38,7 @@ Main changes from the forked version:
               `lamma.cpp/common/log.h` file for logging. For now the GGML spam remains, but there should
               be no more output from this wrapper after that unless the `logfile` feature is enabled - 
               and even then, it should only get directed there.
+- [x] CHANGE: Made `PredictOptions` clonable, swiched the container of the token callback to `Arc` and type aliased it.
 
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'

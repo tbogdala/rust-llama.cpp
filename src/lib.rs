@@ -3,10 +3,10 @@ use std::{
     error::Error,
     ffi::{c_char, c_void, CStr, CString},
     mem::size_of,
-    sync::Mutex,
+    sync::{Arc, Mutex},
 };
 
-use options::{ModelOptions, PredictOptions, TokenCallbackFn};
+use options::{ModelOptions, PredictOptions, TokenCallback};
 
 use lazy_static::lazy_static;
 
@@ -15,7 +15,7 @@ pub mod options;
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 lazy_static! {
-    static ref CALLBACKS: Mutex<HashMap<usize, TokenCallbackFn>> = Mutex::new(HashMap::new());
+    static ref CALLBACKS: Mutex<HashMap<usize, TokenCallback>> = Mutex::new(HashMap::new());
 }
 
 #[derive(Debug, Clone)]
@@ -421,9 +421,8 @@ impl LLama {
         let c_str = CString::new(text.clone()).unwrap();
 
         let input = c_str.as_ptr();
-
-        if let Some(callback) = &opts.token_callback {
-            set_callback(self.ctx, callback.clone());
+        if let Some(callback) = opts.token_callback.as_ref() {
+            set_callback(self.ctx, Some(callback.clone()));
         }
 
         let reverse_count = opts.stop_prompts.len();
@@ -563,9 +562,11 @@ impl Drop for LLama {
     }
 }
 
-fn set_callback(state: *mut c_void, callback: TokenCallbackFn) {
+fn set_callback(state: *mut c_void, callback: Option<TokenCallback>) {
     let mut callbacks = CALLBACKS.lock().unwrap();
-    callbacks.insert(state as usize, callback);
+    if let Some(callback) = callback {
+        callbacks.insert(state as usize, callback);
+    }
 }
 
 #[allow(dead_code)]

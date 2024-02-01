@@ -1,6 +1,6 @@
 // The following structures have documentation comments pulled from the llamacpp source headers where possible.
 
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 // Options controlling how the LLM model loads and behaves at runtime
 #[derive(Debug, Clone)]
@@ -65,7 +65,7 @@ impl Default for ModelOptions {
     }
 }
 
-pub type TokenCallbackFn = fn(String) -> bool;
+pub type TokenCallback = Arc<dyn Fn(String) -> bool + Sync + Send + 'static>;
 
 // Options controlling the behavior of LLama functionality and text prediction.
 #[derive(Clone)]
@@ -160,7 +160,7 @@ pub struct PredictOptions {
     pub logit_bias: String,
 
     // optional callback function that receives tokens as they're predicted
-    pub token_callback: Option<TokenCallbackFn>,
+    pub token_callback: Option<TokenCallback>,
 
     // path to file for saving/loading prompt eval state
     pub path_prompt_cache: String,

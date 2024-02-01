@@ -1,4 +1,7 @@
-use std::io::{self, Write};
+use std::{
+    io::{self, Write},
+    sync::Arc,
+};
 
 use llama_cpp_rs::{
     options::{ModelOptions, PredictOptions},
@@ -27,11 +30,11 @@ pub fn predict_test() {
     let mut predict_options = PredictOptions {
         tokens: (common::get_test_context_length() as f32 * 0.55) as i32,
         ignore_eos: true,
-        token_callback: Some(|token| {
+        token_callback: Some(Arc::new(move |token| {
             print!("{}", token);
             let _ = io::stdout().flush();
             true
-        }),
+        })),
         ..Default::default()
     };
 

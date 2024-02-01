@@ -1,4 +1,7 @@
-use std::io::{self, Write};
+use std::{
+    io::{self, Write},
+    sync::Arc,
+};
 
 use llama_cpp_rs::{
     options::{ModelOptions, PredictOptions},
@@ -24,11 +27,11 @@ pub fn predict_short_tokens_test() {
 
     let predict_options = PredictOptions {
         tokens: 64,
-        token_callback: Some(|token| {
+        token_callback: Some(Arc::new(|token| {
             print!("{}", token);
             let _ = io::stdout().flush();
             true
-        }),
+        })),
         ..Default::default()
     };
 
