@@ -25,7 +25,7 @@ pub fn predict_test() {
         Err(err) => panic!("Failed to load model: {err}"),
     };
 
-    // get slightly over the context of the model in tokens. this way, when the second
+    // get slightly over half of the full context of the model in tokens. this way, when the second
     // prediciton request occurrs it will overflow the kv cache if things were not properly maintained.
     let mut predict_options = PredictOptions {
         tokens: (common::get_test_context_length() as f32 * 0.55) as i32,
