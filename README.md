@@ -64,6 +64,7 @@ will also no longer keep parity with the original repo and will change as needed
 * WINDOWS: Make sure to install an llvm package to compile the bindings. I use scoop, so it's as 
   easy as running `scoop install llvm`. VS 2022 and Cuda 11.8 were also installed in addition to the rust
   toolchain (msvc version, the default) and the cargo commands were issued from the VS Developer Command Prompt.
+  Note: The `logfile` feature is currently broken under Windows MSVC builds.
 
 
 ## Running tests
