@@ -3,7 +3,7 @@ use std::{
     error::Error,
     ffi::{c_char, c_void, CStr, CString},
     mem::size_of,
-    sync::{Arc, Mutex},
+    sync::Mutex,
 };
 
 use options::{ModelOptions, PredictOptions, TokenCallback};
@@ -74,7 +74,14 @@ impl LLama {
 
     // Frees the encapsulated state object being wrapped by this class.
     pub fn free_model(&mut self) {
+        if !self.prompt_cache.is_null() {
+            unsafe {
+                llama_free_prompt_cache(self.prompt_cache);
+            }
+            self.prompt_cache = std::ptr::null_mut();
+        }
         if !self.ctx.is_null() {
+            clear_callback(self.ctx);
             unsafe {
                 llama_binding_free_model(self.ctx, self.model);
             }
@@ -567,24 +574,24 @@ impl Drop for LLama {
     }
 }
 
-fn set_callback(state: *mut c_void, callback: Option<TokenCallback>) {
+fn set_callback(ctx: *mut c_void, callback: Option<TokenCallback>) {
     let mut callbacks = CALLBACKS.lock().unwrap();
     if let Some(callback) = callback {
-        callbacks.insert(state as usize, callback);
+        callbacks.insert(ctx as usize, callback);
     }
 }
 
 #[allow(dead_code)]
-fn clear_callback(state: *mut c_void) {
+fn clear_callback(ctx: *mut c_void) {
     let mut callbacks = CALLBACKS.lock().unwrap();
-    callbacks.remove(&(state as usize));
+    callbacks.remove(&(ctx as usize));
 }
 
 #[no_mangle]
-extern "C" fn tokenCallback(state: *mut c_void, token: *const c_char) -> bool {
+extern "C" fn tokenCallback(ctx: *mut c_void, token: *const c_char) -> bool {
     let mut callbacks = CALLBACKS.lock().unwrap();
 
-    if let Some(callback) = callbacks.get_mut(&(state as usize)) {
+    if let Some(callback) = callbacks.get_mut(&(ctx as usize)) {
         let c_str: &CStr = unsafe { CStr::from_ptr(token) };
         let string = c_str.to_string_lossy().to_string();
         return callback(string);

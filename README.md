@@ -41,10 +41,8 @@ Main changes from the forked version:
 - [x] CHANGE: Made `PredictOptions` clonable, swiched the container of the token callback to `Arc` and type aliased it.
 - [x] ADDED:  `LLama::predict()` now caches the state data for the processed prompt and attempts to reuse
               that state data to skip prompt processing if the _exact same_ prompt text is passed in.
-              NOTE: this isn't as bullet poof as it could be yet as it currently doen't check to make
-              sure it's data for the same loaded model. Please create an issue if you find another bug with its
-              logic. Currently it's enabled all the time, but a feature toggle on the `LLama` struct might be added
-              in the future.
+              NOTE: Please create an issue if you find a bug with its logic. Currently it's enabled all the 
+              time, but a feature toggle on the `LLama` struct might be added in the future.
 
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'

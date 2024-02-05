@@ -644,9 +644,11 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
 
 void llama_free_prompt_cache(void *prompt_cache_ptr)
 {
-    llama_predict_prompt_cache *prompt_cache_data = (llama_predict_prompt_cache *) prompt_cache_ptr;
-    delete[] prompt_cache_data->last_processed_prompt_state;
-    delete prompt_cache_data;
+    if (prompt_cache_ptr != nullptr) {
+        llama_predict_prompt_cache *prompt_cache_data = (llama_predict_prompt_cache *) prompt_cache_ptr;
+        delete[] prompt_cache_data->last_processed_prompt_state;
+        delete prompt_cache_data;
+    }
 }
 
 void llama_binding_free_model(void *state_ptr, void *model_ptr)
