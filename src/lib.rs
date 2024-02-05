@@ -22,6 +22,7 @@ lazy_static! {
 pub struct LLama {
     ctx: *mut c_void,
     model: *mut c_void,
+    prompt_cache: *mut c_void,
     embeddings: bool,
     context_size: i32,
 }
@@ -63,6 +64,7 @@ impl LLama {
                 Ok(Self {
                     ctx: result.ctx,
                     model: result.model,
+                    prompt_cache: std::ptr::null_mut(),
                     embeddings: opts.embeddings,
                     context_size: opts.context_size,
                 })
@@ -414,7 +416,7 @@ impl LLama {
     // a new token is predicted.
     // The function returns a tuple of the predicted string and the timing data for the prediction.
     pub fn predict(
-        &self,
+        &mut self,
         text: String,
         opts: &PredictOptions,
     ) -> Result<(String, LLamaPredictTimings), Box<dyn Error>> {
@@ -509,12 +511,15 @@ impl LLama {
                 self.ctx,
                 self.model,
                 out.as_mut_ptr(),
-                opts.debug_mode,
+                self.prompt_cache,
             );
             llama_free_params(params);
             if ret.result != 0 {
                 return Err("Failed to predict".into());
             }
+
+            // upate the prompt cache opaque pointer
+            self.prompt_cache = ret.prompt_cache;
 
             let c_str: &CStr = CStr::from_ptr(out.as_mut_ptr());
             let mut res: String = c_str.to_str().unwrap().to_owned();

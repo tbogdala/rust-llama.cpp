@@ -20,7 +20,7 @@ pub fn predict_test() {
         ..Default::default()
     };
 
-    let llm_model = match LLama::new(common::get_test_model_path(), &model_params) {
+    let mut llm_model = match LLama::new(common::get_test_model_path(), &model_params) {
         Ok(m) => m,
         Err(err) => panic!("Failed to load model: {err}"),
     };

@@ -18,7 +18,7 @@ Main changes from the forked version:
 - [x] DEL:    Removed all of the needless 'setters' for the options classes.
 - [x] ADDED:  `PredictOptions::min_p` for min_p sampling.
 - [x] CHANGE: `LLama::predict()` now returns a tuple in the result: the inferred text and a struct 
-              containing timing data.
+              containing misc data. It now requires `mut` access to self due to some data caching.
 - [x] CHANGE: `load_model()` now returns a struct with both the loaded ctx and model. LLama now stores both pointers.
 - [x] FIXED:  Fixed crashing from multiple `free_model()` invocations; updated basic_test integration test for verification.
 - [x] FIXED:  Models now get their memory free'd now too instead of just the context.
@@ -39,6 +39,12 @@ Main changes from the forked version:
               be no more output from this wrapper after that unless the `logfile` feature is enabled - 
               and even then, it should only get directed there.
 - [x] CHANGE: Made `PredictOptions` clonable, swiched the container of the token callback to `Arc` and type aliased it.
+- [x] ADDED:  `LLama::predict()` now caches the state data for the processed prompt and attempts to reuse
+              that state data to skip prompt processing if the _exact same_ prompt text is passed in.
+              NOTE: this isn't as bullet poof as it could be yet as it currently doen't check to make
+              sure it's data for the same loaded model. Please create an issue if you find another bug with its
+              logic. Currently it's enabled all the time, but a feature toggle on the `LLama` struct might be added
+              in the future.
 
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'

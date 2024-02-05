@@ -151,17 +151,26 @@ static bool file_is_empty(const std::string &path) {
     return f.tellg() == 0;
 }
 
-llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_ptr, char *result, bool debug)
+typedef struct llama_predict_prompt_cache {
+    std::string last_prompt;
+    std::vector<llama_token> processed_prompt_tokens;
+    uint8_t * last_processed_prompt_state;
+} llama_predict_prompt_cache;
+
+
+llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_ptr, char *result, void* prompt_cache_ptr)
 {
     llama_context *ctx = (llama_context *)ctx_ptr;
     llama_model *model = (llama_model *)model_ptr;
     llama_context *ctx_guidance = nullptr;
     gpt_params *params_p = (gpt_params *)params_ptr;
     llama_sampling_params &sparams = params_p->sparams;
+    llama_predict_prompt_cache *prompt_cache_data = (llama_predict_prompt_cache *) prompt_cache_ptr;
     llama_predict_result return_value;
     
     llama_set_n_threads(ctx, params_p->n_threads, params_p->n_threads_batch);
     llama_kv_cache_clear(ctx);
+    llama_reset_timings(ctx);
         
     // print system information
     {
@@ -205,6 +214,26 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
                 __func__, n_ctx_train, n_ctx);
     }
 
+    bool resuse_last_prompt_data = false;
+    if (prompt_cache_data != nullptr) {
+        // check to see if we're repeating the same prompt and reuse the stored prompt data if so.
+        // if it's not a match, clear out the cached tokens.
+        if (prompt_cache_data->last_prompt == params_p->prompt) {
+            LOG("Prompt match detected. Going to attempt to use last processed prompt token data and state.\n");
+            resuse_last_prompt_data = true;
+            llama_set_state_data(ctx, prompt_cache_data->last_processed_prompt_state);
+        } else {
+            prompt_cache_data->processed_prompt_tokens.clear();
+        }
+    } else {
+        // if we don't have a prompt cache object, create one
+        prompt_cache_data = new llama_predict_prompt_cache;
+        prompt_cache_data->last_processed_prompt_state = nullptr;
+    }
+    // also copy the pointer of the prompt_cache_data to the result here now that it's for sure allocated
+    return_value.prompt_cache = prompt_cache_data;
+
+
     std::string path_session = params_p->path_prompt_cache;
     std::vector<llama_token> session_tokens;
 
@@ -233,12 +262,14 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
     LOG("add_bos: %d\n", add_bos);
 
     std::vector<llama_token> embd_inp;
-    if (!params_p->prompt.empty() || session_tokens.empty()) {
-        LOG("tokenize the prompt\n");
-        embd_inp = ::llama_tokenize(ctx, params_p->prompt, add_bos, true);
-    } else {
-        LOG("use session tokens\n");
-        embd_inp = session_tokens;
+    if (!resuse_last_prompt_data) {
+        if (!params_p->prompt.empty() || session_tokens.empty()) {
+            LOG("tokenize the prompt\n");
+            embd_inp = ::llama_tokenize(ctx, params_p->prompt, add_bos, true);
+        } else {
+            LOG("use session tokens\n");
+            embd_inp = session_tokens;
+        }
     }
 
     LOG("prompt: \"%s\"\n", log_tostr(params_p->prompt));
@@ -349,26 +380,7 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
     LOG("sampling order: \n%s\n", llama_sampling_order_print(sparams).c_str());
     LOG("generate: n_ctx = %d, n_batch = %d, n_predict = %d, n_keep = %d\n", n_ctx, params_p->n_batch, params_p->n_predict, params_p->n_keep);
 
-
-    // group-attention state
-    // number of grouped KV tokens so far (used only if params.grp_attn_n > 1)
-    int ga_i = 0;
-
-    const int ga_n = params_p->grp_attn_n;
-    const int ga_w = params_p->grp_attn_w;
-
-    if (ga_n != 1) {
-        GGML_ASSERT(ga_n > 0                    && "grp_attn_n must be positive");                     // NOLINT
-        GGML_ASSERT(ga_w % ga_n == 0            && "grp_attn_w must be a multiple of grp_attn_n");     // NOLINT
-      //GGML_ASSERT(n_ctx_train % ga_w == 0     && "n_ctx_train must be a multiple of grp_attn_w");    // NOLINT
-      //GGML_ASSERT(n_ctx >= n_ctx_train * ga_n && "n_ctx must be at least n_ctx_train * grp_attn_n"); // NOLINT
-        LOG("self-extend: n_ctx_train = %d, grp_attn_n = %d, grp_attn_w = %d\n", n_ctx_train, ga_n, ga_w);
-    }
-
     LOG("\n\n");
-
-    // our result to send back to Rust
-    std::string res = "";
 
     bool is_antiprompt        = false;
     bool need_to_save_session = !path_session.empty() && n_matching_session_tokens < embd_inp.size();
@@ -382,7 +394,19 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
     std::vector<llama_token> embd;
     std::vector<llama_token> embd_guidance;
 
-    struct llama_sampling_context * ctx_sampling = llama_sampling_init(sparams);
+    struct llama_sampling_context * ctx_sampling =  llama_sampling_init(sparams);
+
+    // our result to send back to Rust
+    std::string res = "";
+    bool need_to_save_state = true;
+
+    // if we're reusing the prompt, clear out any input tokens to be processed
+    // and set the tracking counter to the length of the saved prompt
+    if (resuse_last_prompt_data) {
+        embd_inp.clear();
+        n_past = prompt_cache_data->processed_prompt_tokens.size();
+        LOG("%s: reusing prompt tokens; initializing n_consumed to %d\n",  __func__, n_consumed);
+    }
 
     while (n_remain != 0 && !is_antiprompt) {
         // predict
@@ -396,63 +420,6 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
                 const int skipped_tokens = (int) embd.size() - max_embd_size;
                 embd.resize(max_embd_size);
                 LOG("<<input too long: skipped %d token%s>>", skipped_tokens, skipped_tokens != 1 ? "s" : "");
-            }
-
-            if (ga_n == 1) {
-                // infinite text generation via context shifting
-                // if we run out of context:
-                // - take the n_keep first tokens from the original prompt (via n_past)
-                // - take half of the last (n_ctx - n_keep) tokens and recompute the logits in batches
-                if (n_past + (int) embd.size() + std::max<int>(0, guidance_offset) > n_ctx) {
-                    if (params_p->n_predict == -2) {
-                        LOG("\n\n%s: context full and n_predict == -%d => stopping\n", __func__, params_p->n_predict);
-                        break;
-                    }
-
-                    const int n_left    = n_past - params_p->n_keep - 1;
-                    const int n_discard = n_left/2;
-
-                    LOG("context full, swapping: n_past = %d, n_left = %d, n_ctx = %d, n_keep = %d, n_discard = %d\n",
-                            n_past, n_left, n_ctx, params_p->n_keep, n_discard);
-
-                    llama_kv_cache_seq_rm   (ctx, 0, params_p->n_keep + 1            , params_p->n_keep + n_discard + 1);
-                    llama_kv_cache_seq_shift(ctx, 0, params_p->n_keep + 1 + n_discard, n_past, -n_discard);
-
-                    n_past -= n_discard;
-
-                    if (ctx_guidance) {
-                        n_past_guidance -= n_discard;
-                    }
-
-                    LOG("after swap: n_past = %d, n_past_guidance = %d\n", n_past, n_past_guidance);
-
-                    LOG("embd: %s\n", LOG_TOKENS_TOSTR_PRETTY(ctx, embd).c_str());
-
-                    LOG("clear session path\n");
-                    path_session.clear();
-                }
-            } else {
-                // context extension via Self-Extend
-                while (n_past >= ga_i + ga_w) {
-                    const int ib = (ga_n*ga_i)/ga_w;
-                    const int bd = (ga_w/ga_n)*(ga_n - 1);
-                    const int dd = (ga_w/ga_n) - ib*bd - ga_w;
-
-                    LOG("\n");
-                    LOG("shift: [%6d, %6d] + %6d -> [%6d, %6d]\n", ga_i, n_past, ib*bd, ga_i + ib*bd, n_past + ib*bd);
-                    LOG("div:   [%6d, %6d] / %6d -> [%6d, %6d]\n", ga_i + ib*bd, ga_i + ib*bd + ga_w, ga_n, (ga_i + ib*bd)/ga_n, (ga_i + ib*bd + ga_w)/ga_n);
-                    LOG("shift: [%6d, %6d] + %6d -> [%6d, %6d]\n", ga_i + ib*bd + ga_w, n_past + ib*bd, dd, ga_i + ib*bd + ga_w + dd, n_past + ib*bd + dd);
-
-                    llama_kv_cache_seq_shift(ctx, 0, ga_i,                n_past,              ib*bd);
-                    llama_kv_cache_seq_div  (ctx, 0, ga_i + ib*bd,        ga_i + ib*bd + ga_w, ga_n);
-                    llama_kv_cache_seq_shift(ctx, 0, ga_i + ib*bd + ga_w, n_past + ib*bd,      dd);
-
-                    n_past -= bd;
-
-                    ga_i += ga_w/ga_n;
-
-                    LOG("\nn_past_old = %d, n_past = %d, ga_i = %d\n\n", n_past + bd, n_past, ga_i);
-                }
             }
 
             // try to reuse a matching prefix from the loaded session instead of re-eval (via n_past)
@@ -548,12 +515,28 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
 
         if ((int)embd_inp.size() <= n_consumed)
         {
-            // optionally save the session on first sample (for faster prompt loading next time)
-            if (!path_session.empty() && need_to_save_session && !params_p->prompt_cache_ro) {
+            if (need_to_save_session == true) {
                 need_to_save_session = false;
-                llama_save_session_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.size());
 
-                LOG("saved session to %s\n", path_session.c_str());
+                // optionally save the session on first sample (for faster prompt loading next time)
+                if (!path_session.empty() && need_to_save_session && !params_p->prompt_cache_ro) {
+                    llama_save_session_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.size());
+                    LOG("saved session to %s\n", path_session.c_str());
+                }
+            } 
+
+            if (need_to_save_state == true && resuse_last_prompt_data == false) {
+                LOG("saving last used prompt data.\n");
+                need_to_save_state = false;
+                if (prompt_cache_data->last_processed_prompt_state != nullptr) {
+                    delete[] prompt_cache_data->last_processed_prompt_state;
+                }
+                const size_t state_size = llama_get_state_size(ctx);
+                prompt_cache_data->last_processed_prompt_state = new uint8_t[state_size];
+                llama_copy_state_data(ctx, prompt_cache_data->last_processed_prompt_state);
+                prompt_cache_data->last_prompt = params_p->prompt;
+                LOG("Adding to the processed_prompt_tokens vector %d tokens from embd_inp.\n", embd_inp.size());
+                prompt_cache_data->processed_prompt_tokens.insert(prompt_cache_data->processed_prompt_tokens.end(), embd_inp.begin(),embd_inp.end());
             }
 
             const llama_token id = llama_sampling_sample(ctx_sampling, ctx, ctx_guidance);
@@ -649,12 +632,6 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
     return_value.n_p_eval = timings.n_p_eval;
     return_value.n_eval = timings.n_eval;
 
-    if (debug)
-    {
-        llama_print_timings(ctx);
-        llama_reset_timings(ctx);
-    }
-
     strcpy(result, res.c_str());
 
     if (ctx_guidance) { llama_free(ctx_guidance); }
@@ -663,6 +640,13 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
     LOG("Log end\n");
 
     return return_value;
+}
+
+void llama_free_prompt_cache(void *prompt_cache_ptr)
+{
+    llama_predict_prompt_cache *prompt_cache_data = (llama_predict_prompt_cache *) prompt_cache_ptr;
+    delete[] prompt_cache_data->last_processed_prompt_state;
+    delete prompt_cache_data;
 }
 
 void llama_binding_free_model(void *state_ptr, void *model_ptr)
