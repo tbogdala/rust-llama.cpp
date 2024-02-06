@@ -34,7 +34,7 @@ pub fn predict_grammar_test() {
     };
 
     let predict_options = PredictOptions {
-        tokens: 512,
+        tokens: 1024,
         batch: 512,
         temperature: 1.35,
         top_k: 33,
