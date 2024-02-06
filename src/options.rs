@@ -1,6 +1,6 @@
 // The following structures have documentation comments pulled from the llamacpp source headers where possible.
 
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 // Options controlling how the LLM model loads and behaves at runtime
 #[derive(Debug, Clone)]
@@ -159,11 +159,18 @@ pub struct PredictOptions {
     // logit bias for specific tokens
     pub logit_bias: String,
 
+    // The GBNF (GGML BNF) format for defining the formal grammar to constrain the predicted output.
+    // https://github.com/ggerganov/llama.cpp/blob/master/grammars/README.md
+    pub grammar: String,
+
     // optional callback function that receives tokens as they're predicted
     pub token_callback: Option<TokenCallback>,
 
-    // path to file for saving/loading prompt eval state
+    // path to file for saving/loading prompt eval state,
     pub path_prompt_cache: String,
+
+    // open the prompt cache from file read-only and do not update it
+    pub file_prompt_cache_ro: bool,
 
     // use mlock to keep model in memory
     pub m_lock: bool,
@@ -171,11 +178,8 @@ pub struct PredictOptions {
     // use mmap for faster loads
     pub m_map: bool,
 
-    // save user input and generations to prompt cache
-    pub prompt_cache_all: bool,
-
-    // open the prompt cache read-only and do not update it
-    pub prompt_cache_ro: bool,
+    // save user input and generations to prompt cache (disabled by default) in memory
+    pub prompt_cache_in_memory: bool,
 
     // the GPU that is used for scratch and small tensors
     pub main_gpu: String,
@@ -219,12 +223,13 @@ impl Default for PredictOptions {
             mirostat_tau: 5.0,
             penalize_nl: false,
             logit_bias: String::from(""),
+            grammar: String::from(""),
             token_callback: None,
             path_prompt_cache: String::from(""),
+            file_prompt_cache_ro: false,
             m_lock: false,
             m_map: true,
-            prompt_cache_all: false,
-            prompt_cache_ro: false,
+            prompt_cache_in_memory: false,
             main_gpu: String::from(""),
             tensor_split: String::from(""),
             rope_freq_base: 0.0,

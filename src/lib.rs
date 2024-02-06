@@ -151,6 +151,10 @@ impl LLama {
 
         let logit_bias = logit_bias_cstr.as_ptr();
 
+        let grammar_cstr = CString::new(opts.grammar.clone()).unwrap();
+
+        let grammar = grammar_cstr.as_ptr();
+
         let path_prompt_cache_cstr = CString::new(opts.path_prompt_cache.clone()).unwrap();
 
         let path_prompt_cache = path_prompt_cache_cstr.as_ptr();
@@ -190,15 +194,16 @@ impl LLama {
                 opts.penalize_nl,
                 logit_bias,
                 path_prompt_cache,
-                opts.prompt_cache_all,
+                opts.prompt_cache_in_memory,
                 opts.m_lock,
                 opts.m_map,
                 main_gpu,
                 tensor_split,
-                opts.prompt_cache_ro,
+                opts.file_prompt_cache_ro,
                 opts.rope_freq_base,
                 opts.rope_freq_scale,
                 opts.n_draft,
+                grammar,
             );
 
             let ret = eval(params, self.ctx, input2);
@@ -240,6 +245,10 @@ impl LLama {
 
             let logit_bias = logit_bias_cstr.as_ptr();
 
+            let grammar_cstr = CString::new(opts.grammar.clone()).unwrap();
+
+            let grammar = grammar_cstr.as_ptr();
+
             let path_prompt_cache_cstr = CString::new(opts.path_prompt_cache.clone()).unwrap();
 
             let path_prompt_cache = path_prompt_cache_cstr.as_ptr();
@@ -280,15 +289,16 @@ impl LLama {
                 opts.penalize_nl,
                 logit_bias,
                 path_prompt_cache,
-                opts.prompt_cache_all,
+                opts.prompt_cache_in_memory,
                 opts.m_lock,
                 opts.m_map,
                 main_gpu,
                 tensor_split,
-                opts.prompt_cache_ro,
+                opts.file_prompt_cache_ro,
                 opts.rope_freq_base,
                 opts.rope_freq_scale,
                 opts.n_draft,
+                grammar,
             );
 
             let mut emb_count: i32 = 0;
@@ -356,6 +366,10 @@ impl LLama {
 
             let logit_bias = logit_bias_cstr.as_ptr();
 
+            let grammar_cstr = CString::new(opts.grammar.clone()).unwrap();
+
+            let grammar = grammar_cstr.as_ptr();
+
             let path_prompt_cache_cstr = CString::new(opts.path_prompt_cache.clone()).unwrap();
 
             let path_prompt_cache = path_prompt_cache_cstr.as_ptr();
@@ -394,15 +408,16 @@ impl LLama {
                 opts.penalize_nl,
                 logit_bias,
                 path_prompt_cache,
-                opts.prompt_cache_all,
+                opts.prompt_cache_in_memory,
                 opts.m_lock,
                 opts.m_map,
                 main_gpu,
                 tensor_split,
-                opts.prompt_cache_ro,
+                opts.file_prompt_cache_ro,
                 opts.rope_freq_base,
                 opts.rope_freq_scale,
                 opts.n_draft,
+                grammar,
             );
 
             let mut emb_count: i32 = 0;
@@ -463,6 +478,10 @@ impl LLama {
 
         let logit_bias = logit_bias_cstr.as_ptr();
 
+        let grammar_cstr = CString::new(opts.grammar.clone()).unwrap();
+
+        let grammar = grammar_cstr.as_ptr();
+
         let path_prompt_cache_cstr = CString::new(opts.path_prompt_cache.clone()).unwrap();
 
         let path_prompt_cache = path_prompt_cache_cstr.as_ptr();
@@ -502,15 +521,16 @@ impl LLama {
                 opts.penalize_nl,
                 logit_bias,
                 path_prompt_cache,
-                opts.prompt_cache_all,
+                opts.prompt_cache_in_memory,
                 opts.m_lock,
                 opts.m_map,
                 main_gpu,
                 tensor_split,
-                opts.prompt_cache_ro,
+                opts.file_prompt_cache_ro,
                 opts.rope_freq_base,
                 opts.rope_freq_scale,
                 opts.n_draft,
+                grammar,
             );
 
             let ret = llama_predict(

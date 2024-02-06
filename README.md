@@ -39,10 +39,16 @@ Main changes from the forked version:
               be no more output from this wrapper after that unless the `logfile` feature is enabled - 
               and even then, it should only get directed there.
 - [x] CHANGE: Made `PredictOptions` clonable, swiched the container of the token callback to `Arc` and type aliased it.
+              Renamed `prompt_cache_all` to `prompt_cache_in_memory` to highlight the fact that it controls the in-memory
+              prompt caching mechanism while `path_prompt_cache` enables saving the data to file. Renamed `prompt_cache_ro`
+              to `file_prompt_cache_ro` to highlight that it refers to leaving the file data read-only, and not the in-memory cache.
 - [x] ADDED:  `LLama::predict()` now caches the state data for the processed prompt and attempts to reuse
-              that state data to skip prompt processing if the _exact same_ prompt text is passed in.
-              NOTE: Please create an issue if you find a bug with its logic. Currently it's enabled all the 
-              time, but a feature toggle on the `LLama` struct might be added in the future.
+              that state data to skip prompt processing if the _exact same_ prompt text is passed in. This feature
+              is enabled by setting `PredictOptions::prompt_cache_in_memory` to true.
+              NOTE: Please create an issue if you find a bug with its logic.
+- [x] ADDED:  Support for [GBNF grammars](https://github.com/ggerganov/llama.cpp/blob/master/grammars/README.md)
+              through the `PredictOptions::grammar` string and added a new 'predict_grammar_test.rs' unit test
+              as an example.
 
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'

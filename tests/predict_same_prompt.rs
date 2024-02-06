@@ -27,6 +27,7 @@ pub fn predict_same_prompt_test() {
 
     let predict_options = PredictOptions {
         tokens: 200,
+        prompt_cache_in_memory: true,
         token_callback: Some(Arc::new(move |token| {
             print!("{}", token);
             let _ = io::stdout().flush();

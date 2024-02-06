@@ -215,7 +215,7 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
     }
 
     bool resuse_last_prompt_data = false;
-    if (prompt_cache_data != nullptr) {
+    if (prompt_cache_data != nullptr && params_p->prompt_cache_all) {
         // check to see if we're repeating the same prompt and reuse the stored prompt data if so.
         // if it's not a match, clear out the cached tokens.
         if (prompt_cache_data->last_prompt == params_p->prompt) {
@@ -525,7 +525,7 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
                 }
             } 
 
-            if (need_to_save_state == true && resuse_last_prompt_data == false) {
+            if (params_p->prompt_cache_all == true && need_to_save_state == true && resuse_last_prompt_data == false) {
                 LOG("saving last used prompt data.\n");
                 need_to_save_state = false;
                 if (prompt_cache_data->last_processed_prompt_state != nullptr) {
@@ -614,7 +614,7 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
         }
     }
 
-    if (!path_session.empty() && params_p->prompt_cache_all && !params_p->prompt_cache_ro) {
+    if (!path_session.empty() && !params_p->prompt_cache_ro) {
         LOG("\n%s: saving final output to session file '%s'\n", __func__, path_session.c_str());
         llama_save_session_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.size());
     }
@@ -729,9 +729,9 @@ void *llama_allocate_params(const char *prompt, int seed, int threads, int token
                             float top_p, float min_p, float temp, float repeat_penalty, int repeat_last_n, bool ignore_eos, 
                             int n_batch, int n_keep, const char **antiprompt, int antiprompt_count, float tfs_z, float typical_p, 
                             float frequency_penalty, float presence_penalty, int mirostat, float mirostat_eta, float mirostat_tau, 
-                            bool penalize_nl, const char *logit_bias, const char *session_file, bool prompt_cache_all, bool mlock, 
-                            bool mmap, const char *maingpu, const char *tensorsplit, bool prompt_cache_ro, float rope_freq_base, 
-                            float rope_freq_scale, int n_draft)
+                            bool penalize_nl, const char *logit_bias, const char *session_file, bool prompt_cache_in_memory, bool mlock, 
+                            bool mmap, const char *maingpu, const char *tensorsplit, bool file_prompt_cache_ro, float rope_freq_base, 
+                            float rope_freq_scale, int n_draft, const char *grammar)
 {
     gpt_params *params = new gpt_params;
     params->seed = seed;
@@ -739,7 +739,6 @@ void *llama_allocate_params(const char *prompt, int seed, int threads, int token
     params->n_threads_batch = threads;
     params->n_predict = tokens;
     params->sparams.penalty_last_n = repeat_last_n;
-    params->prompt_cache_ro = prompt_cache_ro;
     params->sparams.top_k = top_k;
     params->sparams.top_p = top_p;
     params->sparams.min_p = min_p;
@@ -781,8 +780,9 @@ void *llama_allocate_params(const char *prompt, int seed, int threads, int token
         }
     }
 
-    params->prompt_cache_all = prompt_cache_all;
+    params->prompt_cache_all = prompt_cache_in_memory;
     params->path_prompt_cache = session_file;
+    params->prompt_cache_ro = file_prompt_cache_ro;
 
     if (antiprompt_count > 0)
     {
@@ -795,6 +795,7 @@ void *llama_allocate_params(const char *prompt, int seed, int threads, int token
     params->sparams.mirostat_eta = mirostat_eta;
     params->sparams.mirostat_tau = mirostat_tau;
     params->sparams.penalize_nl = penalize_nl;
+    params->sparams.grammar = grammar;
     std::stringstream ss(logit_bias);
     llama_token key;
     char sign;
