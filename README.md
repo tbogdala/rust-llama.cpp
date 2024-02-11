@@ -2,7 +2,7 @@
 
 Main changes from the forked version:
 
-- [x] CHANGE: Updated llama.cpp submodule to commit [8f8ddfc](https://github.com/ggerganov/llama.cpp/commit/8f8ddfcfadc830b936318c3ea9fe2e8e3365aa85).
+- [x] CHANGE: Updated llama.cpp submodule to commit [f026f81](https://github.com/ggerganov/llama.cpp/commit/f026f8120f97090d34a52b3dc023c82e0ede3f7d).
 - [x] ADDED:  Documentation for the structures and wrapper classes.
 - [x] ADDED:  `LLama::predict()` integration tests.
 - [x] FIXED:  Fixed a memory allocation error in `predict()` for the output buffer causing problems on free.
