@@ -7,7 +7,7 @@ fn compile_bindings(out_path: &PathBuf) {
     let bindings = bindgen::Builder::default()
         .header("./binding.h")
         .blocklist_function("tokenCallback")
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate bindings");
 
