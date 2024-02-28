@@ -202,11 +202,6 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
     const int n_ctx_train = llama_n_ctx_train(model);
     const int n_ctx = llama_n_ctx(ctx);
 
-    if (params_p->seed == 0) {
-        params_p->seed = time(NULL);
-        LOG("%s: Seed == 0 so a new one was generated: %d\n", __func__, params_p->seed);    
-    }
-
     LOG("%s: input: %s\n", __func__, params_p->prompt.c_str());
 
     if (n_ctx > n_ctx_train) {
@@ -233,6 +228,10 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
     // also copy the pointer of the prompt_cache_data to the result here now that it's for sure allocated
     return_value.prompt_cache = prompt_cache_data;
 
+    if (params_p->seed <= 0) {
+        params_p->seed = time(NULL);
+        LOG("%s: Seed == 0 so a new one was generated: %d\n", __func__, params_p->seed);    
+    }
 
     std::string path_session = params_p->path_prompt_cache;
     std::vector<llama_token> session_tokens;
