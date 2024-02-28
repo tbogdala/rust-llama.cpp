@@ -35,9 +35,6 @@ pub struct ModelOptions {
     // how to split layers across multiple GPUs (size: LLAMA_MAX_DEVICES)
     pub tensor_split: String,
 
-    // attempt optimizations that help on some NUMA systems
-    pub numa: bool,
-
     // RoPE base frequency, 0 = from model
     pub rope_freq_base: f32,
 
@@ -55,7 +52,6 @@ impl Default for ModelOptions {
             vocab_only: false,
             m_map: true,
             n_batch: 0,
-            numa: false,
             n_gpu_layers: 0,
             main_gpu: String::from(""),
             tensor_split: String::from(""),

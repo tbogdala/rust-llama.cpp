@@ -53,7 +53,6 @@ impl LLama {
                 opts.n_batch,
                 main_gpu,
                 tensor_split,
-                opts.numa,
                 opts.rope_freq_base,
                 opts.rope_freq_scale,
             );

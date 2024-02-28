@@ -2,7 +2,7 @@
 
 Main changes from the forked version:
 
-- [x] CHANGE: Updated llama.cpp submodule to commit [f026f81](https://github.com/ggerganov/llama.cpp/commit/f026f8120f97090d34a52b3dc023c82e0ede3f7d).
+- [x] CHANGE: Updated llama.cpp submodule to commit [a693bea](https://github.com/ggerganov/llama.cpp/commit/a693bea1e6762a17b78b6ddf4611e54136941ea2).
 - [x] ADDED:  Documentation for the structures and wrapper classes.
 - [x] ADDED:  `LLama::predict()` integration tests.
 - [x] FIXED:  Fixed a memory allocation error in `predict()` for the output buffer causing problems on free.
@@ -49,6 +49,8 @@ Main changes from the forked version:
 - [x] ADDED:  Support for [GBNF grammars](https://github.com/ggerganov/llama.cpp/blob/master/grammars/README.md)
               through the `PredictOptions::grammar` string and added a new 'predict_grammar_test.rs' unit test
               as an example.
+- [x] CHANGE: Removed numa options on model load for now; upstream implementation changed to support an enumeration
+              of strategies, which can be implemented if there's a need for it.
 
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'
