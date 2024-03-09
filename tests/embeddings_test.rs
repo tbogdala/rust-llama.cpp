@@ -36,7 +36,8 @@ pub fn embeddings_test() {
 
     // just make sure our test function works by comparing it to itself
     let sanity = cosine_similarity(&embeddings, &embeddings);
-    assert!(sanity.eq(&1.0));
+    println!("Sanity should be 1.0 ... and it is {}", sanity);
+    assert!((sanity - 1.0).abs() <= 1e-6);
 
     let test_prompts = [
         "That is a very happy person",
