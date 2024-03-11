@@ -11,8 +11,6 @@ extern "C"
 
     int load_state(void *ctx, char *statefile, char *modes);
 
-    int eval(void *params_ptr, void *ctx, char *text);
-
     void save_state(void *ctx, char *dst, char *modes);
 
     // contains the created context and the model returned from load_model()

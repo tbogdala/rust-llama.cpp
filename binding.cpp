@@ -51,44 +51,69 @@ static std::string llama_token_to_str(const struct llama_context * ctx, llama_to
     return std::string(result.data(), result.size());
 }
 
+static void batch_add_seq(llama_batch & batch, const std::vector<int32_t> & tokens, int seq_id) {
+    for (size_t i = 0; i < tokens.size(); i++) {
+        llama_batch_add(batch, tokens[i], i, { seq_id }, i == tokens.size() - 1);
+    }
+}
+
+
+static void batch_decode(llama_context * ctx, llama_batch & batch, float * output, int n_seq, int n_embd) {
+    // clear previous kv_cache values (irrelevant for embeddings)
+    llama_kv_cache_clear(ctx);
+
+    // run model
+    LOG("%s: n_tokens = %d, n_seq = %d\n", __func__, batch.n_tokens, n_seq);
+    if (llama_decode(ctx, batch) < 0) {
+        LOG("%s : failed to decode\n", __func__);
+    }
+
+    for (int i = 0; i < batch.n_tokens; i++) {
+        if (!batch.logits[i]) {
+            continue;
+        }
+
+        // try to get sequence embeddings - supported only when pooling_type is not NONE
+        const float * embd = llama_get_embeddings_seq(ctx, batch.seq_id[i][0]);
+        if (embd == NULL) {
+            embd = llama_get_embeddings_ith(ctx, i);
+            if (embd == NULL) {
+                LOG("%s: failed to get embeddings for token %d\n", __func__, i);
+                continue;
+            }
+        }
+
+        float * out = output + batch.seq_id[i][0] * n_embd;
+        llama_embd_normalize(embd, out, n_embd);
+    }
+}
 
 int get_embeddings(void *params_ptr, void *state_pr, float *res_embeddings, int *res_n_embeddings)
 {
     gpt_params *params_p = (gpt_params *)params_ptr;
     llama_context *ctx = (llama_context *)state_pr;
-    gpt_params params = *params_p;
     const llama_model *model = llama_get_model(ctx);
 
     int n_past = 0;
 
     // tokenize the prompt
-    const bool add_bos = llama_vocab_type(model) == LLAMA_VOCAB_TYPE_SPM;
-    auto embd_inp = ::llama_tokenize(ctx, params_p->prompt, add_bos);
+    auto embd_inp = ::llama_tokenize(ctx, params_p->prompt, true);
+    if (embd_inp.size() > params_p->n_batch) {
+        LOG("%s: get_embeddings error: prompt is longer than the batch size (%zu tokens, n_batch = %d). clipping prompt.\n",
+                __func__, embd_inp.size(), params_p->n_batch);
+        embd_inp.resize(params_p->n_batch);
+    }
 
-    if (embd_inp.size() > (size_t)params.n_ctx) {
-        LOG("%s: get_embeddings error: prompt is longer than the context window (%zu tokens, n_ctx = %d)\n",
-                __func__, embd_inp.size(), params.n_ctx);
+    const uint64_t n_toks = embd_inp.size();
+    if (n_toks == 0) {
+        LOG("%s: get_embeddings error: input prompt is empty.\n", __func__);
         return 1;
-    }
-
-    if (embd_inp.size() > 0)
-    {
-        int n_tokens = std::min(params.n_batch, (int) embd_inp.size());
-        if (llama_decode(ctx, llama_batch_get_one(embd_inp.data(), n_tokens, n_past, 0))) {
-            LOG("%s: get_embeddings error: failed to eval\n", __func__);
-            return 1;
-        }
-        n_past += n_tokens;
-        embd_inp.erase(embd_inp.begin(), embd_inp.begin() + n_tokens);
-    }
+    };
 
     const int n_embd = llama_n_embd(model);
-    const auto embeddings = llama_get_embeddings(ctx);
-
-    for (int i = 0; i < n_embd; i++)
-    {
-        res_embeddings[i] = embeddings[i];
-    }
+    struct llama_batch batch = llama_batch_init(params_p->n_batch, 0, 1);
+    batch_add_seq(batch, embd_inp, 0);
+    batch_decode(ctx, batch, res_embeddings, 1, n_embd);
     *res_n_embeddings = n_embd;
 
     return 0;
@@ -116,28 +141,6 @@ int get_llama_n_embd(void*model)
     const llama_model *m = (const llama_model *)model;
     return llama_n_embd(m);
 }
-
-int eval(void *params_ptr, void *state_pr, char *text)
-{
-    gpt_params *params_p = (gpt_params *)params_ptr;
-    llama_context *ctx = (llama_context *)state_pr;
-
-    auto n_past = 0;
-    auto last_n_tokens_data = std::vector<llama_token>(params_p->sparams.penalty_repeat, 0);
-
-    auto tokens = std::vector<llama_token>(params_p->n_ctx);
-    auto n_prompt_tokens = llama_tokenize(llama_get_model(ctx), text, strlen(text), tokens.data(), tokens.size(), true, false);
-
-    if (n_prompt_tokens < 1)
-    {
-        LOG("%s : failed to tokenize prompt\n", __func__);
-        return 1;
-    }
-
-    // evaluate prompt
-    return llama_eval(ctx, tokens.data(), n_prompt_tokens, n_past);
-}
-
 
 static bool file_exists(const std::string &path) {
     std::ifstream f(path.c_str());
@@ -819,7 +822,7 @@ load_model_result load_model(const char *fname, int n_ctx, int n_seed, bool mloc
 
     lparams.n_ctx = n_ctx;
     lparams.seed = n_seed;
-    lparams.embedding = embeddings;
+    lparams.embeddings = embeddings;
     lparams.rope_freq_base = rope_freq;
     lparams.rope_freq_scale = rope_scale;
     mparams.use_mlock = mlock;
@@ -862,6 +865,8 @@ load_model_result load_model(const char *fname, int n_ctx, int n_seed, bool mloc
         lparams.n_batch = n_batch;
 
     llama_backend_init();
+    llama_numa_init(GGML_NUMA_STRATEGY_DISABLED);
+
     
     llama_model *model = nullptr;
     llama_context * lctx = nullptr;

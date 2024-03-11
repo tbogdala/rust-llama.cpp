@@ -2,7 +2,7 @@
 
 Main changes from the forked version:
 
-- [x] CHANGE: Updated llama.cpp submodule to commit [a693bea](https://github.com/ggerganov/llama.cpp/commit/a693bea1e6762a17b78b6ddf4611e54136941ea2).
+- [x] CHANGE: Updated llama.cpp submodule to commit [caa106d](https://github.com/ggerganov/llama.cpp/commit/caa106d4e05a0ab94225c220b81f9e2cd522339b).
 - [x] ADDED:  Documentation for the structures and wrapper classes.
 - [x] ADDED:  `LLama::predict()` integration tests.
 - [x] FIXED:  Fixed a memory allocation error in `predict()` for the output buffer causing problems on free.
@@ -51,7 +51,11 @@ Main changes from the forked version:
               as an example.
 - [x] CHANGE: Removed numa options on model load for now; upstream implementation changed to support an enumeration
               of strategies, which can be implemented if there's a need for it.
-
+- [x] DEL:    Removed `Llama::eval()` since it didn't return anything anyway and I'm not sure what the purpose of it ever was.
+              The underlying function in llama.cpp has been deprecated for a while and was just officially removed.
+              Even in skynet's Go wrappers this function is undocumented. If you need to test the evaluation of a prompt,
+              just do a text prediction of length 1? If this was something you needed, open an issue and explain what
+              it was being used for and I'll implement something.
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'
 once tested well enough.
