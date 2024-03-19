@@ -6,3 +6,4 @@ models
 .vscode
 llama.log
 llama.cpp/llama-patched.cpp
+.DS_Store

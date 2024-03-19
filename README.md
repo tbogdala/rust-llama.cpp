@@ -2,7 +2,7 @@
 
 Main changes from the forked version:
 
-- [x] CHANGE: Updated llama.cpp submodule to commit [caa106d](https://github.com/ggerganov/llama.cpp/commit/caa106d4e05a0ab94225c220b81f9e2cd522339b).
+- [x] CHANGE: Updated llama.cpp submodule to tag [b2463](https://github.com/ggerganov/llama.cpp/commit/b80cf3b2d1dee0ad325f7a794fecc66befce7336).
 - [x] ADDED:  Documentation for the structures and wrapper classes.
 - [x] ADDED:  `LLama::predict()` integration tests.
 - [x] FIXED:  Fixed a memory allocation error in `predict()` for the output buffer causing problems on free.
@@ -81,7 +81,11 @@ will also no longer keep parity with the original repo and will change as needed
   easy as running `scoop install llvm`. VS 2022 and Cuda 11.8 were also installed in addition to the rust
   toolchain (msvc version, the default) and the cargo commands were issued from the VS Developer Command Prompt.
   Note: The `logfile` feature is currently broken under Windows MSVC builds.
-
+* If you're not using full GPU offloading, be mindful of the `threads` and `batch` values in your `PredictOptions`
+  object that you're sending to `predict()`. CPU will work better with thread counts <= [number of actual CPU cores].
+  For example, a Macbook Air M3 will choke on the `predict_options_test` (see below) with a thread count of `16` when
+  the `metal` feature isn't enabled, but does just fine with `threads` set to `4`. On my machine you can even see it start
+  to misstep with a value of `8`.
 
 ## Running tests
 

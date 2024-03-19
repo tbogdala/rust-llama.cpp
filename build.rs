@@ -1,3 +1,6 @@
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
+use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 use std::{env, fs};
 
@@ -175,48 +178,61 @@ fn compile_ggml(cx: &mut Build, cx_flags: &str) {
 }
 
 fn compile_metal(cx: &mut Build, cxx: &mut Build, out: &PathBuf) {
-    cx.flag("-DGGML_USE_METAL").flag("-DGGML_METAL_NDEBUG");
-    cxx.flag("-DGGML_USE_METAL");
+    cx.flag("-DGGML_USE_METAL")
+        .flag("-DGGML_METAL_NDEBUG")
+        .flag("-DGGML_METAL_EMBED_LIBRARY");
+    cxx.flag("-DGGML_USE_METAL")
+        .flag("-DGGML_METAL_EMBED_LIBRARY");
 
     println!("cargo:rustc-link-lib=framework=Metal");
     println!("cargo:rustc-link-lib=framework=Foundation");
     println!("cargo:rustc-link-lib=framework=MetalPerformanceShaders");
     println!("cargo:rustc-link-lib=framework=MetalKit");
 
-    // solution yoinked from rustformers/llm -- thanks @philpax
-    // ref: https://github.com/rustformers/llm/commit/9d39ff8cc0a89bb22cc17bdc1dd2470f3421d788
     const GGML_METAL_METAL_PATH: &str = "llama.cpp/ggml-metal.metal";
     const GGML_METAL_PATH: &str = "llama.cpp/ggml-metal.m";
     println!("cargo:rerun-if-changed={GGML_METAL_METAL_PATH}");
     println!("cargo:rerun-if-changed={GGML_METAL_PATH}");
 
-    // HACK: patch ggml-metal.m so that it includes ggml-metal.metal, so that
-    // a runtime dependency is not necessary
-    let ggml_metal_metal = std::fs::read_to_string(GGML_METAL_METAL_PATH)
-        .expect("Could not read ggml-metal.metal")
-        .replace('\\', "\\\\")
-        .replace('\n', "\\n")
-        .replace('\r', "\\r")
-        .replace('\"', "\\\"");
+    let metal_embed_asm = out.join("ggml-metal-embed.s");
+    let metal_source_embed = out.join("ggml-metal-embed.metal");
+    
+     // Read source files
+     let mut common_h = String::new();
+     let mut metal_source = String::new();
+     File::open("llama.cpp/ggml-common.h").unwrap().read_to_string(&mut common_h).unwrap();
+     File::open("llama.cpp/ggml-metal.metal").unwrap().read_to_string(&mut metal_source).unwrap();
+ 
+    // Create embedded metal source
+    let mut embedded_metal = String::new();
+    embedded_metal.push_str(&metal_source.replace("#include \"ggml-common.h\"", common_h.as_str()));
 
-    let ggml_metal = std::fs::read_to_string(GGML_METAL_PATH).expect("Could not read ggml-metal.m");
+    // Write embedded metal source and assembly
+    let mut embed_metal_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .open(&metal_source_embed).unwrap();
+    embed_metal_file.write_all(embedded_metal.as_bytes()).unwrap();
 
-    let needle = r#"NSString * src = [NSString stringWithContentsOfFile:sourcePath encoding:NSUTF8StringEncoding error:&error];"#;
-    if !ggml_metal.contains(needle) {
-        panic!("ggml-metal.m does not contain the needle to be replaced; the patching logic needs to be reinvestigated.");
-    }
+    let mut embed_asm_file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(&metal_embed_asm).unwrap();
+        embed_asm_file.write_all(b"\
+            .section __DATA,__ggml_metallib\n
+            .globl _ggml_metallib_start\n
+            _ggml_metallib_start:\n
+            .incbin \"").unwrap();
+        embed_asm_file.write_all(metal_source_embed.as_os_str().as_bytes()).unwrap();
+        embed_asm_file.write_all(b"\"\n
+            .globl _ggml_metallib_end\n
+            _ggml_metallib_end:\n
+        ").unwrap();
 
-    // Replace the runtime read of the file with a compile-time string
-    let ggml_metal = ggml_metal.replace(
-        needle,
-        &format!(r#"NSString * src  = @"{ggml_metal_metal}";"#),
-    );
-
-    let patched_ggml_metal_path = out.join("ggml-metal.m");
-    std::fs::write(&patched_ggml_metal_path, ggml_metal)
-        .expect("Could not write temporary patched ggml-metal.m");
-
-    cx.file(patched_ggml_metal_path);
+    cx.file(GGML_METAL_PATH);
+    cx.file(metal_embed_asm)
+        .flag("-c")  // Compile to object file
+        .compile("ggml-metal-embed.o");  // Output filename
 }
 
 fn compile_llama(cxx: &mut Build, cxx_flags: &str, out_path: &PathBuf, ggml_type: &str) {
@@ -234,7 +250,7 @@ fn compile_llama(cxx: &mut Build, cxx_flags: &str, out_path: &PathBuf, ggml_type
             for fs_entry in fs::read_dir(out_path).unwrap() {
                 let fs_entry = fs_entry.unwrap();
                 let path = fs_entry.path();
-                if path.ends_with("-ggml-metal.o") {
+                if path.ends_with("-metal-embed.o.a") {
                     cxx.object(path);
                     break;
                 }
@@ -292,6 +308,7 @@ fn compile_llama(cxx: &mut Build, cxx_flags: &str, out_path: &PathBuf, ggml_type
 
     cxx.shared_flag(true)
         .file("./llama.cpp/common/common.cpp")
+        .file("./llama.cpp/unicode.cpp")
         .file("./llama.cpp/common/sampling.cpp")
         .file("./llama.cpp/common/grammar-parser.cpp")
         .file("./llama.cpp/llama-patched.cpp")
