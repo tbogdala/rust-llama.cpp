@@ -1,6 +1,5 @@
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
-use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 use std::{env, fs};
 
@@ -223,7 +222,7 @@ fn compile_metal(cx: &mut Build, cxx: &mut Build, out: &PathBuf) {
             .globl _ggml_metallib_start\n
             _ggml_metallib_start:\n
             .incbin \"").unwrap();
-        embed_asm_file.write_all(metal_source_embed.as_os_str().as_bytes()).unwrap();
+        embed_asm_file.write_all(metal_source_embed.into_os_string().as_encoded_bytes()).unwrap();
         embed_asm_file.write_all(b"\"\n
             .globl _ggml_metallib_end\n
             _ggml_metallib_end:\n
