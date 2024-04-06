@@ -221,6 +221,11 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
             resuse_last_prompt_data = true;
             llama_set_state_data(ctx, prompt_cache_data->last_processed_prompt_state);
         } else {
+            // new prompt detected, so free the memory of the cached state
+            if (prompt_cache_data->last_processed_prompt_state != nullptr) {
+                delete[] prompt_cache_data->last_processed_prompt_state;
+                prompt_cache_data->last_processed_prompt_state = nullptr;
+            }
             prompt_cache_data->processed_prompt_tokens.clear();
         }
     } else {
