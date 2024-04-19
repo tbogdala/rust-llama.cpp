@@ -308,6 +308,7 @@ fn compile_llama(cxx: &mut Build, cxx_flags: &str, out_path: &PathBuf, ggml_type
     cxx.shared_flag(true)
         .file("./llama.cpp/common/common.cpp")
         .file("./llama.cpp/unicode.cpp")
+        .file("./llama.cpp/unicode-data.cpp")
         .file("./llama.cpp/common/sampling.cpp")
         .file("./llama.cpp/common/grammar-parser.cpp")
         .file("./llama.cpp/llama-patched.cpp")
