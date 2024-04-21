@@ -35,14 +35,14 @@ void sigint_handler(int signo)
 }
 #endif
 
-// This comes from llama.cpp as this handy version of the function is not exported in the
-// header, only the longer version of llama_token_to_piece. Renamed to llama_token_to_str here.
-static std::string llama_token_to_str(const struct llama_context * ctx, llama_token token) {
+// this is a dupe of the `llama_token_to_piece` function from `common` but with a parameter
+// to control the printing of special tokens.
+std::string llama_token_to_str(const struct llama_context * ctx, llama_token token, bool include_specials) {
     std::vector<char> result(8, 0);
-    const int n_tokens = llama_token_to_piece(llama_get_model(ctx), token, result.data(), result.size());
+    const int n_tokens = llama_token_to_piece(llama_get_model(ctx), token, result.data(), result.size(), include_specials);
     if (n_tokens < 0) {
         result.resize(-n_tokens);
-        int check = llama_token_to_piece(llama_get_model(ctx), token, result.data(), result.size());
+        int check = llama_token_to_piece(llama_get_model(ctx), token, result.data(), result.size(), include_specials);
         GGML_ASSERT(check == -n_tokens);
     } else {
         result.resize(n_tokens);
@@ -161,7 +161,7 @@ typedef struct llama_predict_prompt_cache {
 } llama_predict_prompt_cache;
 
 
-llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_ptr, char *result, void* prompt_cache_ptr)
+llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_ptr, bool include_specials, char *result, void* prompt_cache_ptr)
 {
     llama_context *ctx = (llama_context *)ctx_ptr;
     llama_model *model = (llama_model *)model_ptr;
@@ -254,7 +254,7 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
             // The file exists and is not empty
             session_tokens.resize(n_ctx);
             size_t n_token_count_out = 0;
-            if (!llama_load_session_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.capacity(), &n_token_count_out)) {
+            if (!llama_state_load_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.capacity(), &n_token_count_out)) {
                 LOG("%s: error: failed to load session file '%s'\n", __func__, path_session.c_str());
                 return_value.result = 1;
                 return return_value;
@@ -266,6 +266,7 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
     }
 
     const bool add_bos = llama_should_add_bos_token(model);
+    GGML_ASSERT(llama_add_eos_token(model) != 1);
     LOG("add_bos: %d\n", add_bos);
 
     std::vector<llama_token> embd_inp;
@@ -295,10 +296,10 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
     if (ctx_guidance) {
         LOG("cfg_negative_prompt: \"%s\"\n", log_tostr(sparams.cfg_negative_prompt));
 
-        guidance_inp = ::llama_tokenize(ctx_guidance, sparams.cfg_negative_prompt, add_bos, true);
+        guidance_inp = ::llama_tokenize(ctx_guidance, sparams.cfg_negative_prompt, true, true);
         LOG("guidance_inp tokenized: %s\n", LOG_TOKENS_TOSTR_PRETTY(ctx_guidance, guidance_inp).c_str());
 
-        std::vector<llama_token> original_inp = ::llama_tokenize(ctx, params_p->prompt, add_bos, true);
+        std::vector<llama_token> original_inp = ::llama_tokenize(ctx, params_p->prompt, true, true);
         LOG("original_inp tokenized: %s\n", LOG_TOKENS_TOSTR_PRETTY(ctx, original_inp).c_str());
 
         original_prompt_len = original_inp.size();
@@ -355,6 +356,8 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
     // number of tokens to keep when resetting context
     if (params_p->n_keep < 0 || params_p->n_keep > (int)embd_inp.size()) {
         params_p->n_keep = (int)embd_inp.size();
+    } else {
+        params_p->n_keep += add_bos; // always keep the BOS token
     }
 
     {
@@ -374,8 +377,8 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
             }
         }
 
-        if (params_p->n_keep > 0) {
-        LOG("%s: static prompt based on n_keep: '", __func__);
+       if (params_p->n_keep > add_bos) {
+            LOG_TEE("%s: static prompt based on n_keep: '", __func__);
             for (int i = 0; i < params_p->n_keep; i++) {
                 LOG("%s", llama_token_to_piece(ctx, embd_inp[i]).c_str());
             }
@@ -400,6 +403,14 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
 
     std::vector<llama_token> embd;
     std::vector<llama_token> embd_guidance;
+
+    // tokenized antiprompts
+    std::vector<std::vector<llama_token>> antiprompt_ids;
+
+    antiprompt_ids.reserve(params_p->antiprompt.size());
+    for (const std::string & antiprompt : params_p->antiprompt) {
+        antiprompt_ids.emplace_back(::llama_tokenize(ctx, antiprompt, false, true));
+    }
 
     struct llama_sampling_context * ctx_sampling =  llama_sampling_init(sparams);
 
@@ -527,7 +538,7 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
 
                 // optionally save the session on first sample (for faster prompt loading next time)
                 if (!path_session.empty() && need_to_save_session && !params_p->prompt_cache_ro) {
-                    llama_save_session_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.size());
+                    llama_state_save_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.size());
                     LOG("saved session to %s\n", path_session.c_str());
                 }
             } 
@@ -560,7 +571,7 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
             LOG("n_remain: %d\n", n_remain);
 
             // call the token callback on the Rust side
-            auto token_str = llama_token_to_str(ctx, id);
+            auto token_str = llama_token_to_str(ctx, id, include_specials);
             if (!tokenCallback(ctx_ptr, token_str.c_str())) {
                 break;
             }
@@ -582,7 +593,7 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
         }
 
         for (auto id : embd) {
-            res += llama_token_to_str(ctx, id);
+            res += llama_token_to_str(ctx, id, include_specials);
         }
 
         // if not currently processing queued inputs;
@@ -608,14 +619,23 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
                     }
                 }
 
+                // check for reverse prompt using special tokens
+                llama_token last_token = llama_sampling_last(ctx_sampling);
+                for (std::vector<llama_token> ids : antiprompt_ids) {
+                    if (ids.size() == 1 && last_token == ids[0]) {
+                        is_antiprompt = true;
+                        break;
+                    }
+                }
+
                 if (is_antiprompt) {
                     LOG("found antiprompt: %s\n", last_output.c_str());
                 }
             }
         }
 
-        // end of text token
-        if (!embd.empty() && embd.back() == llama_token_eos(model)) {
+        // end of generation
+        if (!embd.empty() && llama_token_is_eog(model, embd.back())) {
             LOG(" [end of text]\n");
             break;
         }
@@ -623,7 +643,7 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
 
     if (!path_session.empty() && !params_p->prompt_cache_ro) {
         LOG("\n%s: saving final output to session file '%s'\n", __func__, path_session.c_str());
-        llama_save_session_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.size());
+        llama_state_save_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.size());
     }
 
     // build up the result structure with the success code and all the timing data

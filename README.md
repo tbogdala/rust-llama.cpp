@@ -2,7 +2,7 @@
 
 Main changes from the forked version:
 
-- [x] CHANGE: Updated llama.cpp submodule to tag [b2699](https://github.com/ggerganov/llama.cpp/tree/b2699).
+- [x] CHANGE: Updated llama.cpp submodule to tag [b2709](https://github.com/ggerganov/llama.cpp/tree/b2709).
 - [x] ADDED:  Documentation for the structures and wrapper classes.
 - [x] ADDED:  `LLama::predict()` integration tests.
 - [x] FIXED:  Fixed a memory allocation error in `predict()` for the output buffer causing problems on free.
@@ -56,6 +56,8 @@ Main changes from the forked version:
               Even in skynet's Go wrappers this function is undocumented. If you need to test the evaluation of a prompt,
               just do a text prediction of length 1? If this was something you needed, open an issue and explain what
               it was being used for and I'll implement something.
+- [x] CHANGE: `LLama::predict()` how has an additional parameter called `include_specials` which is a boolean indicating
+              if special characters should be tokenized to text or not in the output.
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'
 once tested well enough.

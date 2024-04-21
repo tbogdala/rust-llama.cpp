@@ -45,7 +45,7 @@ pub fn predict_options_test() {
 
     let prompt = "USER: Write the start to the next movie collaboration between Quentin Tarantino and Robert Rodriguez.\nASSISTANT:";
 
-    let result = llm_model.predict(prompt.to_string(), &predict_options);
+    let result = llm_model.predict(prompt.to_string(), false, &predict_options);
     let (_, timings) = result.unwrap();
     println!(
         "\n\nTiming Data: {} tokens total in {:.2} ms ; {:.2} T/s\n",

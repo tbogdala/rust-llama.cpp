@@ -60,7 +60,7 @@ extern "C"
         int n_eval;
     } llama_predict_result;
 
-    llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_ptr, char *result, void* prompt_cache_ptr);    
+    llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_ptr, bool include_specials, char *result, void* prompt_cache_ptr);    
 
     // free the pointer returned in llama_predict_result from llama_predict().
     // only needed if you're not intending to use the prompt cache feature
