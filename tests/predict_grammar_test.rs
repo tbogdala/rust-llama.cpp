@@ -41,6 +41,7 @@ pub fn predict_grammar_test() {
         top_p: 0.64,
         penalty: 1.13,
         grammar: grammar_string,
+        print_specials: false, // including special tokens breaks the json text
         token_callback: Some(Arc::new(|token| {
             print!("{}", token);
             let _ = io::stdout().flush();
@@ -53,11 +54,9 @@ pub fn predict_grammar_test() {
     let output_sequence = "ASSISTANT: ";
     let prompt = format!("{}You are an award-winning fiction author, known for jaded and sarcastic commentary on the human condition, contracted to write data files that describe engaging characters for video games. Create a new and *totally unique* character described in the JSON text format with fields for `description`, `personality` and `attributes`. Create a verbose character description, adding your trademark flair for engaging character design! It is *VITAL* that you follow all these instructions because this video game is very important to my career and I'll be fired from my job if it isn't good.\n{}", input_sequence, output_sequence);
 
-    let result = llm_model.predict(prompt.to_string(), false, &predict_options);
+    let result = llm_model.predict(prompt.to_string(), &predict_options);
     let (character_json_str, timings) = result.unwrap();
-
-    println!("Final JSON:\n{}", character_json_str);
-
+    
     println!(
         "\n\nTiming Data: {} tokens total in {:.2} ms ; {:.2} T/s\n",
         timings.n_eval,

@@ -56,7 +56,7 @@ Main changes from the forked version:
               Even in skynet's Go wrappers this function is undocumented. If you need to test the evaluation of a prompt,
               just do a text prediction of length 1? If this was something you needed, open an issue and explain what
               it was being used for and I'll implement something.
-- [x] CHANGE: `LLama::predict()` how has an additional parameter called `include_specials` which is a boolean indicating
+- [x] CHANGE: `PredictOptions()` how has an additional member called `print_specials` which is a boolean indicating
               if special characters should be tokenized to text or not in the output.
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'

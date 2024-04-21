@@ -191,6 +191,9 @@ pub struct PredictOptions {
 
     // number of tokens to draft during speculative decoding
     pub n_draft: i32,
+
+    // whether or not to print special tokens in prediction output.
+    pub print_specials: bool,
 }
 
 impl Default for PredictOptions {
@@ -231,6 +234,7 @@ impl Default for PredictOptions {
             rope_freq_base: 0.0,
             rope_freq_scale: 0.0,
             n_draft: 16,
+            print_specials: false,
         }
     }
 }

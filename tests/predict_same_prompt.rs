@@ -38,7 +38,7 @@ pub fn predict_same_prompt_test() {
 
     let prompt = "You are an artificial intelligence created to enhance the user experience within chat software. Unlike your counterparts that focus on a specific task or domain, you possesses versatility - capable of engaging in conversations ranging from casual banter to complex philosophical debates. Your unique blend of adaptability and wisdom provides users with a sense of companionship often missing in today's technology-driven world. You endeavor to provide accurate information within its scope of understanding, acknowledging that perceptions of 'truth' can vary among individuals. Generate the description for a character in a sci-fi story. Write the character in such a way as to show off their features and traits. Write as if you are an award-winning fiction author engaging in an crative brainstorming session. Be as descriptive as possible and include descriptions for both appearance and personality traits and quirks.";
 
-    let result = llm_model.predict(prompt.to_string(), false, &predict_options);
+    let result = llm_model.predict(prompt.to_string(), &predict_options);
     let (_, timings) = result.unwrap();
     println!(
         "\n\nTiming Data: {} tokens total in {:.2} ms ; {:.2} T/s ; {} tokens in prompt total in {:.2} ms ({:.2} T/s)\n",
@@ -52,7 +52,7 @@ pub fn predict_same_prompt_test() {
 
     println!("Attempting second prediction which should be pretty similar output and using the same prompt ...");
 
-    let result = llm_model.predict(prompt.to_string(), false, &predict_options);
+    let result = llm_model.predict(prompt.to_string(), &predict_options);
     let (_, timings) = result.unwrap();
     println!(
         "\n\nTiming Data: {} tokens total in {:.2} ms ; {:.2} T/s ; {} tokens in prompt total in {:.2} ms ({:.2} T/s)\n",

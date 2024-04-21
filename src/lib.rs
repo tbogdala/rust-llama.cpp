@@ -340,7 +340,6 @@ impl LLama {
     pub fn predict(
         &mut self,
         text: String,
-        include_specials: bool,
         opts: &PredictOptions,
     ) -> Result<(String, LLamaPredictTimings), Box<dyn Error>> {
         let c_str = CString::new(text.clone()).unwrap();
@@ -438,7 +437,7 @@ impl LLama {
                 params,
                 self.ctx,
                 self.model,
-                include_specials,
+                opts.print_specials,
                 out.as_mut_ptr(),
                 self.prompt_cache,
             );
