@@ -378,7 +378,7 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
         }
 
        if (params_p->n_keep > add_bos) {
-            LOG_TEE("%s: static prompt based on n_keep: '", __func__);
+            LOG("%s: static prompt based on n_keep: '", __func__);
             for (int i = 0; i < params_p->n_keep; i++) {
                 LOG("%s", llama_token_to_piece(ctx, embd_inp[i]).c_str());
             }
