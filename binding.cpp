@@ -260,7 +260,6 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
                 return return_value;
             }
             session_tokens.resize(n_token_count_out);
-            llama_set_rng_seed(ctx, params_p->seed);
             LOG("%s: loaded a session with prompt size of %d tokens\n", __func__, (int)session_tokens.size());
         }
     }
@@ -346,7 +345,7 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
         log_tostr(embd_inp.empty()), n_matching_session_tokens, embd_inp.size(), session_tokens.size(), embd_inp.size());
 
     // if we will use the cache for the full prompt without reaching the end of the cache, force
-    // reevaluation of the last token token to recalculate the cached logits
+    // reevaluation of the last token to recalculate the cached logits
     if (!embd_inp.empty() && n_matching_session_tokens == embd_inp.size() && session_tokens.size() > embd_inp.size()) {
         LOGLN("recalculate the cached logits (do): session_tokens.resize( %zu )", embd_inp.size() - 1);
 
