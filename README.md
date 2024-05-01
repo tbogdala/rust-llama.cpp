@@ -38,7 +38,7 @@ Main changes from the forked version:
               `lamma.cpp/common/log.h` file for logging. For now the GGML spam remains, but there should
               be no more output from this wrapper after that unless the `logfile` feature is enabled - 
               and even then, it should only get directed there.
-- [x] CHANGE: Made `PredictOptions` clonable, swiched the container of the token callback to `Arc` and type aliased it.
+- [x] CHANGE: Made `PredictOptions` clonable, switched the container of the token callback to `Arc` and type aliased it.
               Renamed `prompt_cache_all` to `prompt_cache_in_memory` to highlight the fact that it controls the in-memory
               prompt caching mechanism while `path_prompt_cache` enables saving the data to file. Renamed `prompt_cache_ro`
               to `file_prompt_cache_ro` to highlight that it refers to leaving the file data read-only, and not the in-memory cache.
@@ -58,6 +58,11 @@ Main changes from the forked version:
               it was being used for and I'll implement something.
 - [x] CHANGE: `PredictOptions()` how has an additional member called `print_specials` which is a boolean indicating
               if special characters should be tokenized to text or not in the output.
+- [x] FIXED:  Changed internal binding function `llama_predict` to only return the string for the generated tokens. The
+              original behavior upstream is to return the whole string including prompt. Llama-3 exposed this weakness
+              since by default it doesn't render tokens to string in an exact match. In addition to the above change
+              for special characters, this change should make the Llama-3 models supported out of the box. In the Rust
+              library code, the original implementation tried to remove the prompt anyway, so this should be a transparent fix.
 
 This fork has the changes in development on the 'dev' branch, which will be merged into 'master'
 once tested well enough.
@@ -100,7 +105,7 @@ Any of the 'default' parameters for the integration tests should be modified
 in the `tests/common/mod.rs` file.
 
 The recommended way to run the tests involves using the correct feature for your
-hardware accelleration. The following example is for CUDA device.
+hardware acceleration. The following example is for CUDA device.
 
 ```bash
 cargo test --release --features cuda --test "*" -- --nocapture --test-threads 1

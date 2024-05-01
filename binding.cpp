@@ -574,6 +574,10 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
             if (!tokenCallback(ctx_ptr, token_str.c_str())) {
                 break;
             }
+
+            for (auto id : embd) {
+                res += llama_token_to_str(ctx, id, include_specials);
+            }
         } else {
             // some user input remains from prompt or interaction, forward it to processing
             LOG("embd_inp.size(): %d, n_consumed: %d\n", (int) embd_inp.size(), n_consumed);
@@ -589,10 +593,6 @@ llama_predict_result llama_predict(void *params_ptr, void *ctx_ptr, void *model_
                     break;
                 }
             }
-        }
-
-        for (auto id : embd) {
-            res += llama_token_to_str(ctx, id, include_specials);
         }
 
         // if not currently processing queued inputs;

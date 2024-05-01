@@ -451,10 +451,7 @@ impl LLama {
 
             let c_str: &CStr = CStr::from_ptr(out.as_mut_ptr());
             let mut res: String = c_str.to_str().unwrap().to_owned();
-
             res = res.trim_start().to_string();
-            res = res.trim_start_matches(&text).to_string();
-            res = res.trim_start_matches('\n').to_string();
 
             for s in &opts.stop_prompts {
                 res = res.trim_end_matches(s).to_string();
