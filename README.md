@@ -75,6 +75,8 @@ will also no longer keep parity with the original repo and will change as needed
 
 ### Notes:
 
+* Git's `--recurse-submodules` parameter is your friend! Don't forget to use it or things will get out of
+  sync between the vendored llama.cpp version this project wraps.
 * Setting `ModelOptions::context_size` to zero will cause memory errors currently as that is what is used
   to create the buffers to send through the FFI.
 * PLATFORMS: Windows 11, MacOS and Linux are tested without any features enabled. MacOS with the `metal`

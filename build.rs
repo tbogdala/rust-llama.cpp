@@ -48,7 +48,7 @@ fn compile_blis(cx: &mut Build) {
     println!("cargo:rustc-link-lib=blis");
 }
 
-fn compile_cuda(cxx_flags: &str, outdir: &PathBuf) {
+fn compile_cuda(cxx: &mut Build, cxx_flags: &str, outdir: &PathBuf) {
     println!("cargo:rustc-link-search=native=/usr/local/cuda/lib64");
     println!("cargo:rustc-link-search=native=/opt/cuda/lib64");
 
@@ -113,6 +113,57 @@ fn compile_cuda(cxx_flags: &str, outdir: &PathBuf) {
     } else {
         let include_path = format!("{}\\include", cuda_path);
 
+        let cuda_output_folder = outdir
+            .join("llama.cpp");
+
+        for entry in fs::read_dir("llama.cpp/ggml-cuda").unwrap() {
+            let entry = entry.unwrap().path();
+            let cuda_file = entry.to_str().unwrap();
+            let entry_stem = entry.file_stem().unwrap();
+            let mut cuda_obj_file = cuda_output_folder.clone();
+            cuda_obj_file = cuda_obj_file.join(entry_stem);
+            cuda_obj_file.set_extension("o");
+
+            if cuda_file.ends_with(".cu") {
+                std::process::Command::new("nvcc")
+                    .arg("-ccbin")
+                    .arg(
+                        cc::Build::new()
+                            .get_compiler()
+                            .path()
+                            .parent()
+                            .unwrap()
+                            .join("cl.exe"),
+                    )
+                    .arg("-I")
+                    .arg(&include_path)
+                    .arg("-o")
+                    .arg(&cuda_obj_file.to_str().unwrap())
+                    .arg("-x")
+                    .arg("cu")
+                    .arg("-maxrregcount=0")
+                    .arg("--machine")
+                    .arg("64")
+                    .arg("--compile")
+                    .arg("--generate-code=arch=compute_52,code=[compute_52,sm_52]")
+                    .arg("--generate-code=arch=compute_61,code=[compute_61,sm_61]")
+                    .arg("--generate-code=arch=compute_75,code=[compute_75,sm_75]")
+                    .arg("-D_WINDOWS")
+                    .arg("-DNDEBUG")
+                    .arg("-DGGML_USE_CUDA")
+                    .arg("-D_CRT_SECURE_NO_WARNINGS")
+                    .arg("-D_MBCS")
+                    .arg("-DWIN32")
+                    .arg(r"-Illama.cpp\include\ggml-cuda")
+                    .arg(r"-Illama.cpp")
+                    .arg(cuda_file)
+                    .status()
+                    .unwrap();
+                nvcc.object(cuda_obj_file.to_str().unwrap());
+                cxx.object(cuda_obj_file.to_str().unwrap());
+            }
+        }
+
         let object_file = outdir
             .join("llama.cpp")
             .join("ggml-cuda.o")
@@ -145,17 +196,18 @@ fn compile_cuda(cxx_flags: &str, outdir: &PathBuf) {
             .arg("--generate-code=arch=compute_75,code=[compute_75,sm_75]")
             .arg("-D_WINDOWS")
             .arg("-DNDEBUG")
-            .arg("-DGGML_USE_CUBLAS")
+            .arg("-DGGML_USE_CUDA")
             .arg("-D_CRT_SECURE_NO_WARNINGS")
             .arg("-D_MBCS")
             .arg("-DWIN32")
             .arg(r"-Illama.cpp\include\ggml")
+            .arg(r"-Illama.cpp\include\ggml-cuda")
             .arg(r"llama.cpp\ggml-cuda.cu")
             .status()
             .unwrap();
 
         nvcc.object(&object_file);
-        nvcc.flag("-DGGML_USE_CUBLAS");
+        nvcc.flag("-DGGML_USE_CUDA");
         nvcc.include(&include_path);
     }
 }
@@ -311,6 +363,7 @@ fn compile_llama(cxx: &mut Build, cxx_flags: &str, out_path: &PathBuf, ggml_type
         .file("./llama.cpp/unicode-data.cpp")
         .file("./llama.cpp/common/sampling.cpp")
         .file("./llama.cpp/common/grammar-parser.cpp")
+        .file("./llama.cpp/common/json-schema-to-grammar.cpp")
         .file("./llama.cpp/llama-patched.cpp")
         .file("./binding.cpp")
         .cpp(true)
@@ -361,8 +414,8 @@ fn main() {
     }
 
     if cfg!(feature = "cuda") {
-        cx_flags.push_str(" -DGGML_USE_CUBLAS");
-        cxx_flags.push_str(" -DGGML_USE_CUBLAS");
+        cx_flags.push_str(" -DGGML_USE_CUDA");
+        cxx_flags.push_str(" -DGGML_USE_CUDA");
 
         if cfg!(target_os = "linux") {
             cx.include("/usr/local/cuda/include")
@@ -381,7 +434,7 @@ fn main() {
 
         compile_ggml(&mut cx, &cx_flags);
 
-        compile_cuda(&cxx_flags, &out_path);
+        compile_cuda(&mut cxx, &cxx_flags, &out_path);
 
         if !cfg!(feature = "logfile") {
             cxx.define("LOG_DISABLE_LOGS", None);
