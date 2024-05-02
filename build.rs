@@ -105,11 +105,35 @@ fn compile_cuda(cxx: &mut Build, cxx_flags: &str, outdir: &PathBuf) {
     // by people more specialized in windows development would be appreciated.
 
     if cfg!(target_os = "linux") {
+        let cuda_output_folder = outdir
+            .join("llama.cpp")
+            .join("ggml-cuda");
+
         nvcc.compiler("nvcc")
-            .file("./llama.cpp/ggml-cuda.cu")
             .flag("-Wno-pedantic")
-            .include("./llama.cpp/ggml-cuda.h")
+            .flag("-I./llama.cpp")
+            .flag("-I./llama.cpp/ggml-cuda")
+            .include("./llama.cpp/ggml-cuda.h");
+
+        for entry in fs::read_dir("llama.cpp/ggml-cuda").unwrap() {
+            let entry = entry.unwrap().path();
+            let cuda_file = entry.to_str().unwrap();
+            let entry_stem = entry.file_stem().unwrap();
+            let mut cuda_obj_file = cuda_output_folder.clone();
+            cuda_obj_file = cuda_obj_file.join(entry_stem);
+            cuda_obj_file.set_extension("o");
+
+            if cuda_file.ends_with(".cu") {
+                let mut nvcc_iter = nvcc.clone();
+                nvcc_iter.file(cuda_file).compile(entry_stem.to_str().unwrap());
+                cxx.object(cuda_obj_file.to_str().unwrap());
+            }
+        }
+
+        nvcc.file("./llama.cpp/ggml-cuda.cu")
             .compile("ggml-cuda");
+
+        
     } else {
         let include_path = format!("{}\\include", cuda_path);
 
