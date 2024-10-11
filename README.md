@@ -1,5 +1,9 @@
 # Forked from mdrokz/rust-llama.cpp
 
+(Note: I'm putting this into archive mode because I'm not maintaining this fork anymore. I have my own
+set of wrappers derived from the code I wrote for this one: [woolyrust](https://github.com/tbogdala/woolyrust).
+It's not a perfect drop in replacement, but it's much more maintainable for me.)
+
 Main changes from the forked version:
 
 - [x] CHANGE: Updated llama.cpp submodule to tag [b2777](https://github.com/ggerganov/llama.cpp/tree/b2777).
